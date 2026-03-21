@@ -207,9 +207,30 @@ Evaluate all ${jobs.length} jobs now using this framework.`;
 
       const data = await res.json();
       let raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      raw = raw.replace(/^```(?:json)?/, '').replace(/```$/, '').trim();
 
-      return { statusCode: 200, headers, body: JSON.stringify({ scored: JSON.parse(raw) }) };
+      // Strip markdown fences
+      raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+
+      // Find the JSON array — sometimes Gemini adds preamble text
+      const arrayStart = raw.indexOf('[');
+      const arrayEnd   = raw.lastIndexOf(']');
+      if (arrayStart === -1 || arrayEnd === -1) {
+        // Log what Gemini actually returned to help debug
+        console.error('Gemini raw response (no JSON array found):', raw.slice(0, 500));
+        return { statusCode: 500, headers, body: JSON.stringify({ error: `Gemini did not return a JSON array. Got: ${raw.slice(0, 200)}` }) };
+      }
+
+      raw = raw.slice(arrayStart, arrayEnd + 1);
+
+      let scored;
+      try {
+        scored = JSON.parse(raw);
+      } catch(parseErr) {
+        console.error('JSON parse error:', parseErr.message, 'Raw:', raw.slice(0, 500));
+        return { statusCode: 500, headers, body: JSON.stringify({ error: `JSON parse failed: ${parseErr.message}` }) };
+      }
+
+      return { statusCode: 200, headers, body: JSON.stringify({ scored }) };
     }
 
   } catch (e) {
