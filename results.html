@@ -214,8 +214,8 @@
   const sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON);
   let userId = null;
   let allResults = [];
-  let queries  = ['AI Enablement','AI Consultant','Copilot Consultant','Resource Manager','Staffing Manager','Staffing Specialist'];
-  let countries = ['gb','de','es','at'];
+  let queries   = [];
+  let countries = [];
 
   // ── Auth ────────────────────────────────────────────────────
   sb.auth.getSession().then(({data}) => {
@@ -230,11 +230,31 @@
 
   // ── Load profile ────────────────────────────────────────────
   async function loadProfile() {
-    const { data } = await sb.from('profiles').select('*').eq('id', userId).single();
-    if (!data) return;
+    // Try to fetch existing profile
+    let { data, error } = await sb.from('profiles').select('*').eq('id', userId).single();
+
+    // If no profile row exists yet, create one with defaults
+    if (!data || error) {
+      const session = (await sb.auth.getSession()).data.session;
+      const { data: newRow } = await sb.from('profiles').upsert({
+        id:               userId,
+        email:            session?.user?.email || '',
+        search_queries:   [],
+        search_countries: [],
+      }, { onConflict: 'id' }).select().single();
+      data = newRow;
+    }
+
+    if (!data) {
+      // Still nothing — just render defaults
+      renderTags('queriesWrap',  queries,   'queryInput');
+      renderTags('countriesWrap', countries, 'countryInput');
+      return;
+    }
+
     if (data.resume_text)     document.getElementById('resumeText').value = data.resume_text;
-    if (data.search_queries)   { queries.splice(0, queries.length, ...data.search_queries); }
-    if (data.search_countries) { countries.splice(0, countries.length, ...data.search_countries); }
+    if (data.search_queries   && data.search_queries.length)   { queries.splice(0, queries.length, ...data.search_queries); }
+    if (data.search_countries && data.search_countries.length) { countries.splice(0, countries.length, ...data.search_countries); }
     renderTags('queriesWrap',  queries,   'queryInput');
     renderTags('countriesWrap', countries, 'countryInput');
   }
