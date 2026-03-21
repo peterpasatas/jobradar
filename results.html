@@ -233,8 +233,8 @@
     const { data } = await sb.from('profiles').select('*').eq('id', userId).single();
     if (!data) return;
     if (data.resume_text)     document.getElementById('resumeText').value = data.resume_text;
-    if (data.search_queries)  { queries = data.search_queries; }
-    if (data.search_countries){ countries = data.search_countries; }
+    if (data.search_queries)   { queries.splice(0, queries.length, ...data.search_queries); }
+    if (data.search_countries) { countries.splice(0, countries.length, ...data.search_countries); }
     renderTags('queriesWrap',  queries,   'queryInput');
     renderTags('countriesWrap', countries, 'countryInput');
   }
@@ -451,12 +451,17 @@
   }
 
   function setupTagInput(inputId, arr, wrapId) {
-    document.getElementById(inputId).addEventListener('keydown', e => {
+    const handler = e => {
       if (e.key !== 'Enter' && e.key !== ',') return;
       e.preventDefault();
+      e.stopPropagation();
       const val = e.target.value.trim().replace(/,$/, '');
       if (val && !arr.includes(val)) { arr.push(val); renderTags(wrapId, arr, inputId); }
       e.target.value = '';
+    };
+    document.getElementById(inputId).addEventListener('keydown', handler);
+    document.getElementById(inputId).addEventListener('keyup', e => {
+      if (e.key === 'Enter') e.preventDefault(); // prevent bubbling on mobile
     });
   }
 
