@@ -1,4 +1,4 @@
-// config.js — all API calls go through Netlify functions, keys are server-side only
+// config.js — all API calls go through Vercel API functions, keys are server-side only
 const CONFIG = {
   SUPABASE_URL:  'https://tfeuzkbxezahbdhxqnxt.supabase.co',
   SUPABASE_ANON: 'sb_publishable_jB2LDhCIsQMsnqkbCvYO4Q_tr6HescW',
@@ -34,7 +34,7 @@ function normaliseJob(job) {
 
 async function fetchAdzunaJobs(query, country, results = 50, maxDaysOld = 15) {
   try {
-    const res = await fetch('/.netlify/functions/fetch-jobs', {
+    const res = await fetch('/api/fetch-jobs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, country, results, maxDaysOld }),
@@ -72,12 +72,12 @@ async function collectJobs(queries, countries, resultsPerQuery = 50, maxDaysOld 
 }
 
 async function scoreJobsWithGemini(jobs, resumeText, onProgress) {
-  const BATCH_SIZE = 3;
+  const BATCH_SIZE = 10;
   const allScored  = [];
   const batches    = Math.ceil(jobs.length / BATCH_SIZE);
 
   // Run 2 batches concurrently to speed up scoring
-  const CONCURRENCY = 1;
+  const CONCURRENCY = 2;
   for (let b = 0; b < batches; b += CONCURRENCY) {
     const batchPromises = [];
 
@@ -89,7 +89,7 @@ async function scoreJobsWithGemini(jobs, resumeText, onProgress) {
       onProgress && onProgress(`Scoring jobs ${start + 1}–${start + batch.length} of ${jobs.length}…`);
 
       batchPromises.push(
-        fetch('/.netlify/functions/score-jobs', {
+        fetch('/api/score-jobs', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ jobs: batch, resumeText }),
