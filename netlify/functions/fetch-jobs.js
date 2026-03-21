@@ -1,22 +1,21 @@
-// netlify/functions/fetch-jobs.js
-// Proxies Adzuna API calls server-side — keys never exposed to browser
+// api/fetch-jobs.js
+// Vercel serverless function — proxies Adzuna API, keys never exposed to browser
+// Free tier: 60 second timeout
 
-exports.handler = async (event) => {
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Content-Type': 'application/json',
-  };
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Content-Type', 'application/json');
 
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
   }
 
   try {
-    const { query, country, results = 50, maxDaysOld = 15 } = JSON.parse(event.body || '{}');
+    const { query, country, results = 50, maxDaysOld = 15 } = req.body;
 
     if (!query || !country) {
-      return { statusCode: 400, headers, body: JSON.stringify({ error: 'query and country are required' }) };
+      return res.status(400).json({ error: 'query and country are required' });
     }
 
     const url = new URL(`https://api.adzuna.com/v1/api/jobs/${country}/search/1`);
@@ -26,15 +25,15 @@ exports.handler = async (event) => {
     url.searchParams.set('results_per_page', results);
     url.searchParams.set('max_days_old',     maxDaysOld);
 
-    const res = await fetch(url.toString());
-    if (!res.ok) {
-      return { statusCode: res.status, headers, body: JSON.stringify({ error: `Adzuna error: ${res.status}` }) };
+    const response = await fetch(url.toString());
+    if (!response.ok) {
+      return res.status(response.status).json({ error: `Adzuna error: ${response.status}` });
     }
 
-    const data = await res.json();
-    return { statusCode: 200, headers, body: JSON.stringify({ results: data.results || [] }) };
+    const data = await response.json();
+    return res.status(200).json({ results: data.results || [] });
 
   } catch (e) {
-    return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) };
+    return res.status(500).json({ error: e.message });
   }
-};
+}
