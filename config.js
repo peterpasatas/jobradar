@@ -77,7 +77,7 @@ async function scoreJobsWithGemini(jobs, resumeText, onProgress) {
   const batches    = Math.ceil(jobs.length / BATCH_SIZE);
 
   // Run 2 batches concurrently to speed up scoring
-  const CONCURRENCY = 3;
+  const CONCURRENCY = 1;
   for (let b = 0; b < batches; b += CONCURRENCY) {
     const batchPromises = [];
 
