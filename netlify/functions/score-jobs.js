@@ -24,158 +24,40 @@ exports.handler = async (event) => {
       location: j.location, description: j.description,
     })), null, 2);
 
-    const prompt = `You are an expert career advisor and hiring evaluator.
+    const prompt = `You are a hiring evaluator. Score each job against the candidate resume below.
 
-Your task is to evaluate how well a candidate fits multiple job postings using a structured, consistent, and explainable scoring framework.
-
-You must follow the exact evaluation process below. Do not skip steps.
-
----
-
-## INPUTS
-
-### CANDIDATE RESUME
+## CANDIDATE RESUME
 ${resumeText.slice(0, 3500)}
 
-### JOB POSTINGS
+## JOB POSTINGS
 ${postingsJson}
 
----
+## SCORING RULES
+For each job, score 0-100 based on:
+- Skills match (40pts): required skills matched vs missing. Award partial for adjacent/transferable skills.
+- Experience level (25pts): full if candidate meets or exceeds years required, partial if slightly below.
+- Role alignment (20pts): same function=high, adjacent=medium, different=low.
+- Domain fit (15pts): same industry=high, adjacent=medium, unrelated=low.
 
-## OVERALL GOAL
+HARD CAPS (apply before scoring):
+- Under 40% of required skills matched → max 50
+- Candidate 2+ seniority levels below role → max 45
+- Completely unrelated domain, no transferable skills → max 40
 
-For each job, estimate the candidate's likelihood of being a competitive applicant (i.e., passing an initial recruiter screen), based on:
-- Skills match
-- Experience level
-- Role alignment
-- Domain/industry fit
-- Presence/absence of critical requirements
+PENALTIES (apply after scoring):
+- Missing critical required skill → -10 to -25
+- Overqualified by 2+ levels → -10
 
-You are NOT optimising for keyword overlap.
-You ARE optimising for real-world hiring likelihood.
+RECOMMENDATION:
+- "Apply" = score >= 70 and no major skill gaps
+- "Maybe" = score 45-69 or some gaps
+- "Skip" = score < 45
 
----
+Focus on real hiring likelihood, NOT keyword matching. Consider adjacent and transferable skills.
 
-## DEFINITIONS
-
-### Core (Must-Have) Requirements
-Skills, tools, or qualifications explicitly required using phrases like "required", "must have", "essential", or clearly central to the role.
-
-### Secondary (Nice-to-Have) Requirements
-Skills that are beneficial but not mandatory.
-
-### Adjacent Fit
-A candidate is considered adjacent if:
-- They have used similar tools in a different domain
-- They have performed similar responsibilities under a different title
-- They demonstrate transferable skills (e.g., data analysis → business analysis)
-
----
-
-## STEP 1: EXTRACT JOB FEATURES
-
-For each job, extract:
-- extracted_title: normalised role title
-- seniority_level: one of ["Junior", "Mid", "Senior", "Lead", "Principal", "Unknown"]
-- required_skills: 3-8 core skills/tools (must-have only)
-- optional_skills: 2-6 secondary skills
-- inferred_experience_years: use stated number if explicit, otherwise infer: Junior→1, Mid→4, Senior→8, Lead/Principal→10, Unknown→0
-- domain: industry or problem space
-- key_responsibilities: 2-4 concise phrases
-
----
-
-## STEP 2: EXTRACT CANDIDATE FEATURES
-
-From the resume, infer:
-- candidate_skills: normalised list of skills/tools
-- candidate_seniority: ["Junior", "Mid", "Senior", "Lead", "Principal", "Unknown"]
-- candidate_experience_years: estimated total relevant experience
-- candidate_domains: industries worked in
-- candidate_roles: past role types
-
-If information is missing or truncated, make conservative assumptions.
-
----
-
-## STEP 3: HARD FILTER (ELIGIBILITY CHECK)
-
-Apply BEFORE scoring:
-1. If candidate is missing most core required_skills (less than 40% match) → cap score at 50
-2. If candidate seniority is 2+ levels below required → cap score at 45
-3. If role is clearly unrelated to candidate's domain AND no transferable skills → cap score at 40
-
----
-
-## STEP 4: SCORING (0-100 TOTAL)
-
-### 1. Skills Match (0-40)
-- 30 pts: proportion of required_skills matched
-- 10 pts: adjacent/transferable skills
-
-### 2. Experience Level (0-25)
-- Full points if candidate meets/exceeds inferred_experience_years
-- Partial if slightly below
-- Low if significantly below
-
-### 3. Role Alignment (0-20)
-- Same role/function → high
-- Adjacent role → medium
-- Different function → low
-
-### 4. Domain Fit (0-15)
-- Same domain → high
-- Adjacent domain → medium
-- Unrelated → low
-
----
-
-## STEP 5: PENALTIES
-
-Apply AFTER base scoring:
-- Missing a critical required skill → subtract 10-25 points
-- Overqualification (2+ levels above role) → subtract up to 10
-- Vague job description → reduce confidence, do NOT inflate score
-
-Ensure final score is between 0-100. Apply caps from STEP 3 if applicable.
-
----
-
-## STEP 6: SCORE CALIBRATION
-
-- 90-100 → very likely to pass recruiter screen
-- 75-89 → strong candidate with minor gaps
-- 60-74 → plausible but not competitive
-- 40-59 → long shot
-- <40 → unlikely
-
-Use this scale consistently across ALL jobs.
-
----
-
-## STEP 7: RECOMMENDATION
-
-- "Apply" → score >= 70 AND no major missing core requirements
-- "Maybe" → score 45-69 OR some gaps but plausible
-- "Skip" → score < 45 OR fails hard filters
-
----
-
-## STEP 8: OUTPUT FORMAT
-
-Return ONLY a valid JSON array with exactly ${jobs.length} objects. No markdown, no explanation, no extra text:
-
-[
-  {
-    "index": integer,
-    "extracted_title": string,
-    "skills": array of 5-10 normalised skills,
-    "experience_years": integer,
-    "summary": "1-2 sentence role description",
-    "relevance_score": integer 0-100,
-    "recommendation": "Apply" or "Maybe" or "Skip"
-  }
-]
+## OUTPUT
+Return ONLY a JSON array with exactly ${jobs.length} objects, no markdown, no explanation:
+[{"index":integer,"extracted_title":string,"skills":string[],"experience_years":integer,"summary":"1-2 sentences","relevance_score":integer,"recommendation":"Apply"|"Maybe"|"Skip"}]
 
 Evaluate all ${jobs.length} jobs now.`;
 
