@@ -72,42 +72,51 @@ async function collectJobs(queries, countries, resultsPerQuery = 50, maxDaysOld 
 }
 
 async function scoreJobsWithGemini(jobs, resumeText, onProgress) {
-  const BATCH_SIZE = 10;
+  const BATCH_SIZE = 5;
   const allScored  = [];
   const batches    = Math.ceil(jobs.length / BATCH_SIZE);
 
-  for (let b = 0; b < batches; b++) {
-    const start = b * BATCH_SIZE;
-    const batch = jobs.slice(start, start + BATCH_SIZE);
-    onProgress && onProgress(`Scoring jobs ${start + 1}–${start + batch.length} of ${jobs.length}…`);
+  // Run 2 batches concurrently to speed up scoring
+  const CONCURRENCY = 2;
+  for (let b = 0; b < batches; b += CONCURRENCY) {
+    const batchPromises = [];
 
-    try {
-      const res = await fetch('/.netlify/functions/score-jobs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobs: batch, resumeText }),
-      });
+    for (let c = 0; c < CONCURRENCY && (b + c) < batches; c++) {
+      const batchIndex = b + c;
+      const start = batchIndex * BATCH_SIZE;
+      const batch = jobs.slice(start, start + BATCH_SIZE);
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
-        throw new Error(err.error || `Function error: ${res.status}`);
-      }
+      onProgress && onProgress(`Scoring jobs ${start + 1}–${start + batch.length} of ${jobs.length}…`);
 
-      const data = await res.json();
-      const batchScored = data.scored || [];
-
-      // Re-map indexes back to global positions
-      batchScored.forEach(item => {
-        if (item?.index != null) item.index = start + item.index;
-      });
-
-      allScored.push(...batchScored);
-    } catch(e) {
-      throw new Error(`Scoring failed (batch ${b + 1}/${batches}): ${e.message}`);
+      batchPromises.push(
+        fetch('/.netlify/functions/score-jobs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jobs: batch, resumeText }),
+        })
+        .then(async res => {
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+            throw new Error(err.error || `Function error: ${res.status}`);
+          }
+          const data = await res.json();
+          const batchScored = data.scored || [];
+          batchScored.forEach(item => {
+            if (item?.index != null) item.index = start + item.index;
+          });
+          return batchScored;
+        })
+        .catch(e => {
+          throw new Error(`Scoring failed (batch ${batchIndex + 1}/${batches}): ${e.message}`);
+        })
+      );
     }
 
-    // Small pause between batches to avoid rate limiting
-    if (b < batches - 1) await sleep(2000);
+    const results = await Promise.all(batchPromises);
+    results.forEach(batchScored => allScored.push(...batchScored));
+
+    // Brief pause between concurrent groups
+    if (b + CONCURRENCY < batches) await sleep(1000);
   }
 
   return allScored;
