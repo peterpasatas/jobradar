@@ -1,5 +1,5 @@
 // netlify/functions/score-jobs.js
-// Calls Gemini API server-side — key never exposed to browser
+// Scores ONE batch of jobs (max 20) — called multiple times by the browser
 
 exports.handler = async (event) => {
   const headers = {
@@ -13,48 +13,14 @@ exports.handler = async (event) => {
   }
 
   try {
-    const body = JSON.parse(event.body || '{}');
-    const { jobs, resumeText } = body;
-
-    // Test mode — send ?test=1 to verify Gemini key works
-    if (body.test) {
-      const testRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
-        { method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: 'Reply with only the word: OK' }] }] }) }
-      );
-      const testData = await testRes.json();
-      return { statusCode: 200, headers, body: JSON.stringify({ 
-        status: testRes.status,
-        gemini_response: testData,
-        key_set: !!process.env.GEMINI_API_KEY
-      })};
-    }
+    const { jobs, resumeText } = JSON.parse(event.body || '{}');
 
     if (!jobs || !resumeText) {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'jobs and resumeText are required' }) };
     }
 
-    // Split into batches of 20 to avoid Netlify 30s timeout
-    const BATCH_SIZE = 20;
-    const allScored  = [];
-
-    for (let batchStart = 0; batchStart < jobs.length; batchStart += BATCH_SIZE) {
-      const batch      = jobs.slice(batchStart, batchStart + BATCH_SIZE);
-      const batchScored = await scoreWithGemini(batch, batchStart, resumeText);
-      allScored.push(...batchScored);
-    }
-
-    return { statusCode: 200, headers, body: JSON.stringify({ scored: allScored }) };
-
-  } catch(e) {
-    return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) };
-  }
-};
-
-async function scoreWithGemini(jobs, indexOffset, resumeText) {
     const postingsJson = JSON.stringify(jobs.map((j, i) => ({
-      index: indexOffset + i, title: j.title, company: j.company,
+      index: i, title: j.title, company: j.company,
       location: j.location, description: j.description,
     })), null, 2);
 
@@ -111,11 +77,11 @@ A candidate is considered adjacent if:
 For each job, extract:
 - extracted_title: normalised role title
 - seniority_level: one of ["Junior", "Mid", "Senior", "Lead", "Principal", "Unknown"]
-- required_skills: 3–8 core skills/tools (must-have only)
-- optional_skills: 2–6 secondary skills
+- required_skills: 3-8 core skills/tools (must-have only)
+- optional_skills: 2-6 secondary skills
 - inferred_experience_years: use stated number if explicit, otherwise infer: Junior→1, Mid→4, Senior→8, Lead/Principal→10, Unknown→0
 - domain: industry or problem space
-- key_responsibilities: 2–4 concise phrases
+- key_responsibilities: 2-4 concise phrases
 
 ---
 
@@ -141,23 +107,23 @@ Apply BEFORE scoring:
 
 ---
 
-## STEP 4: SCORING (0–100 TOTAL)
+## STEP 4: SCORING (0-100 TOTAL)
 
-### 1. Skills Match (0–40)
+### 1. Skills Match (0-40)
 - 30 pts: proportion of required_skills matched
 - 10 pts: adjacent/transferable skills
 
-### 2. Experience Level (0–25)
+### 2. Experience Level (0-25)
 - Full points if candidate meets/exceeds inferred_experience_years
 - Partial if slightly below
 - Low if significantly below
 
-### 3. Role Alignment (0–20)
+### 3. Role Alignment (0-20)
 - Same role/function → high
 - Adjacent role → medium
 - Different function → low
 
-### 4. Domain Fit (0–15)
+### 4. Domain Fit (0-15)
 - Same domain → high
 - Adjacent domain → medium
 - Unrelated → low
@@ -167,20 +133,20 @@ Apply BEFORE scoring:
 ## STEP 5: PENALTIES
 
 Apply AFTER base scoring:
-- Missing a critical required skill → subtract 10–25 points
+- Missing a critical required skill → subtract 10-25 points
 - Overqualification (2+ levels above role) → subtract up to 10
 - Vague job description → reduce confidence, do NOT inflate score
 
-Ensure final score is between 0–100. Apply caps from STEP 3 if applicable.
+Ensure final score is between 0-100. Apply caps from STEP 3 if applicable.
 
 ---
 
 ## STEP 6: SCORE CALIBRATION
 
-- 90–100 → very likely to pass recruiter screen
-- 75–89 → strong candidate with minor gaps
-- 60–74 → plausible but not competitive
-- 40–59 → long shot
+- 90-100 → very likely to pass recruiter screen
+- 75-89 → strong candidate with minor gaps
+- 60-74 → plausible but not competitive
+- 40-59 → long shot
 - <40 → unlikely
 
 Use this scale consistently across ALL jobs.
@@ -189,15 +155,15 @@ Use this scale consistently across ALL jobs.
 
 ## STEP 7: RECOMMENDATION
 
-- "Apply" → score ≥ 70 AND no major missing core requirements
-- "Maybe" → score 45–69 OR some gaps but plausible
+- "Apply" → score >= 70 AND no major missing core requirements
+- "Maybe" → score 45-69 OR some gaps but plausible
 - "Skip" → score < 45 OR fails hard filters
 
 ---
 
 ## STEP 8: OUTPUT FORMAT
 
-For EVERY job return EXACTLY this JSON structure — no markdown, no explanation, no extra text:
+Return ONLY a valid JSON array with exactly ${jobs.length} objects. No markdown, no explanation, no extra text:
 
 [
   {
@@ -211,11 +177,8 @@ For EVERY job return EXACTLY this JSON structure — no markdown, no explanation
   }
 ]
 
-Return ONLY a valid JSON array with exactly ${jobs.length} objects.
+Evaluate all ${jobs.length} jobs now.`;
 
-Evaluate all ${jobs.length} jobs now using this framework.`;
-
-    // Call Gemini
     let attempt = 0;
     while (true) {
       const res = await fetch(
@@ -227,31 +190,25 @@ Evaluate all ${jobs.length} jobs now using this framework.`;
         }
       );
 
-      if (res.status === 429 && attempt < 4) {
+      if (res.status === 429 && attempt < 3) {
         attempt++;
-        const wait = attempt * 20000;
-        await new Promise(r => setTimeout(r, wait));
+        await new Promise(r => setTimeout(r, attempt * 10000));
         continue;
       }
 
       if (!res.ok) {
         const err = await res.text();
-        return { statusCode: res.status, headers, body: JSON.stringify({ error: `Gemini error: ${err.slice(0, 200)}` }) };
+        return { statusCode: res.status, headers, body: JSON.stringify({ error: `Gemini ${res.status}: ${err.slice(0, 300)}` }) };
       }
 
       const data = await res.json();
       let raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/,'').trim();
 
-      // Strip markdown fences
-      raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
-
-      // Find the JSON array — sometimes Gemini adds preamble text
       const arrayStart = raw.indexOf('[');
       const arrayEnd   = raw.lastIndexOf(']');
       if (arrayStart === -1 || arrayEnd === -1) {
-        // Log what Gemini actually returned to help debug
-        console.error('Gemini raw response (no JSON array found):', raw.slice(0, 500));
-        return { statusCode: 500, headers, body: JSON.stringify({ error: `Gemini did not return a JSON array. Got: ${raw.slice(0, 200)}` }) };
+        return { statusCode: 500, headers, body: JSON.stringify({ error: `No JSON array in Gemini response: ${raw.slice(0, 200)}` }) };
       }
 
       raw = raw.slice(arrayStart, arrayEnd + 1);
@@ -259,11 +216,14 @@ Evaluate all ${jobs.length} jobs now using this framework.`;
       let scored;
       try {
         scored = JSON.parse(raw);
-      } catch(parseErr) {
-        console.error('JSON parse error:', parseErr.message, 'Raw:', raw.slice(0, 500));
-        return { statusCode: 500, headers, body: JSON.stringify({ error: `JSON parse failed: ${parseErr.message}` }) };
+      } catch(e) {
+        return { statusCode: 500, headers, body: JSON.stringify({ error: `JSON parse failed: ${e.message}. Raw: ${raw.slice(0, 200)}` }) };
       }
 
-      return scored;
+      return { statusCode: 200, headers, body: JSON.stringify({ scored }) };
     }
-}
+
+  } catch (e) {
+    return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) };
+  }
+};
