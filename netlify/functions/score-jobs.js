@@ -13,14 +13,48 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { jobs, resumeText } = JSON.parse(event.body || '{}');
+    const body = JSON.parse(event.body || '{}');
+    const { jobs, resumeText } = body;
+
+    // Test mode — send ?test=1 to verify Gemini key works
+    if (body.test) {
+      const testRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: 'Reply with only the word: OK' }] }] }) }
+      );
+      const testData = await testRes.json();
+      return { statusCode: 200, headers, body: JSON.stringify({ 
+        status: testRes.status,
+        gemini_response: testData,
+        key_set: !!process.env.GEMINI_API_KEY
+      })};
+    }
 
     if (!jobs || !resumeText) {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'jobs and resumeText are required' }) };
     }
 
+    // Split into batches of 20 to avoid Netlify 30s timeout
+    const BATCH_SIZE = 20;
+    const allScored  = [];
+
+    for (let batchStart = 0; batchStart < jobs.length; batchStart += BATCH_SIZE) {
+      const batch      = jobs.slice(batchStart, batchStart + BATCH_SIZE);
+      const batchScored = await scoreWithGemini(batch, batchStart, resumeText);
+      allScored.push(...batchScored);
+    }
+
+    return { statusCode: 200, headers, body: JSON.stringify({ scored: allScored }) };
+
+  } catch(e) {
+    return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) };
+  }
+};
+
+async function scoreWithGemini(jobs, indexOffset, resumeText) {
     const postingsJson = JSON.stringify(jobs.map((j, i) => ({
-      index: i, title: j.title, company: j.company,
+      index: indexOffset + i, title: j.title, company: j.company,
       location: j.location, description: j.description,
     })), null, 2);
 
@@ -230,10 +264,6 @@ Evaluate all ${jobs.length} jobs now using this framework.`;
         return { statusCode: 500, headers, body: JSON.stringify({ error: `JSON parse failed: ${parseErr.message}` }) };
       }
 
-      return { statusCode: 200, headers, body: JSON.stringify({ scored }) };
+      return scored;
     }
-
-  } catch (e) {
-    return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) };
-  }
-};
+}
