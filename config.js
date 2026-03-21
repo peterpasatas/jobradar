@@ -4,7 +4,7 @@ const CONFIG = {
   SUPABASE_ANON:  'sb_publishable_jB2LDhCIsQMsnqkbCvYO4Q_tr6HescW',
   ADZUNA_APP_ID:  'd5e5065a',
   ADZUNA_APP_KEY: '0c3086e428c2726d739ffe8c556fafa5',
-  GEMINI_API_KEY: 'AIzaSyB3j5wZD5MU_Epv2ejcDGaaNqLLDC6elok',
+  GEMINI_API_KEY: 'AIzaSyAiP9oPXMIDOWRXs3RsdXcNDk50RBp0ygA',
   GEMINI_MODEL:   'gemini-2.5-flash-lite',
 };
 
