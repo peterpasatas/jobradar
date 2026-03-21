@@ -161,6 +161,18 @@
         </div>
         <div class="field-hint">gb · de · es · at · nl · fr · us</div>
       </div>
+      <div class="field" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div>
+          <label>Results per query</label>
+          <input type="number" id="resultsPerQuery" value="50" min="1" max="50"
+            style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:8px 10px;outline:none;">
+        </div>
+        <div>
+          <label>Max days old</label>
+          <input type="number" id="maxDaysOld" value="15" min="1" max="90"
+            style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:8px 10px;outline:none;">
+        </div>
+      </div>
     </div>
 
     <button class="run-btn" id="runBtn" onclick="runSearch()">
@@ -255,6 +267,8 @@
     if (data.resume_text)     document.getElementById('resumeText').value = data.resume_text;
     if (data.search_queries   && data.search_queries.length)   { queries.splice(0, queries.length, ...data.search_queries); }
     if (data.search_countries && data.search_countries.length) { countries.splice(0, countries.length, ...data.search_countries); }
+    if (data.results_per_query) document.getElementById('resultsPerQuery').value = data.results_per_query;
+    if (data.max_days_old)      document.getElementById('maxDaysOld').value = data.max_days_old;
     renderTags('queriesWrap',  queries,   'queryInput');
     renderTags('countriesWrap', countries, 'countryInput');
   }
@@ -263,9 +277,11 @@
   async function savePreferences() {
     const { error } = await sb.from('profiles').update({
       resume_text:      document.getElementById('resumeText').value.trim(),
-      search_queries:   queries,
-      search_countries: countries,
-      updated_at:       new Date().toISOString(),
+      search_queries:    queries,
+      search_countries:  countries,
+      results_per_query: parseInt(document.getElementById('resultsPerQuery').value) || 10,
+      max_days_old:      parseInt(document.getElementById('maxDaysOld').value) || 20,
+      updated_at:        new Date().toISOString(),
     }).eq('id', userId);
 
     const msg = document.getElementById('saveMsg');
@@ -324,7 +340,10 @@
 
     try {
       // Step 1: Collect jobs
-      const { jobs, skipped } = await collectJobs(queries, countries, (done, total, label) => {
+      const resultsPerQuery = parseInt(document.getElementById('resultsPerQuery').value) || 10;
+      const maxDaysOld      = parseInt(document.getElementById('maxDaysOld').value) || 20;
+
+      const { jobs, skipped } = await collectJobs(queries, countries, resultsPerQuery, maxDaysOld, (done, total, label) => {
         addLog(`${label} ✓`, 'ok');
         setProgress((done / total) * 40, `Fetching… ${done}/${total} queries`);
       });
