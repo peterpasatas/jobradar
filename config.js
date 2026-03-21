@@ -72,20 +72,43 @@ async function collectJobs(queries, countries, resultsPerQuery = 50, maxDaysOld 
 }
 
 async function scoreJobsWithGemini(jobs, resumeText, onProgress) {
-  onProgress && onProgress(`Sending ${jobs.length} jobs to Gemini…`);
-  try {
-    const res = await fetch('/.netlify/functions/score-jobs', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jobs, resumeText }),
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || `Function error: ${res.status}`);
+  const BATCH_SIZE = 20;
+  const allScored  = [];
+  const batches    = Math.ceil(jobs.length / BATCH_SIZE);
+
+  for (let b = 0; b < batches; b++) {
+    const start = b * BATCH_SIZE;
+    const batch = jobs.slice(start, start + BATCH_SIZE);
+    onProgress && onProgress(`Scoring jobs ${start + 1}–${start + batch.length} of ${jobs.length}…`);
+
+    try {
+      const res = await fetch('/.netlify/functions/score-jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobs: batch, resumeText }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        throw new Error(err.error || `Function error: ${res.status}`);
+      }
+
+      const data = await res.json();
+      const batchScored = data.scored || [];
+
+      // Re-map indexes back to global positions
+      batchScored.forEach(item => {
+        if (item?.index != null) item.index = start + item.index;
+      });
+
+      allScored.push(...batchScored);
+    } catch(e) {
+      throw new Error(`Scoring failed (batch ${b + 1}/${batches}): ${e.message}`);
     }
-    const data = await res.json();
-    return data.scored || [];
-  } catch(e) {
-    throw new Error(`Scoring failed: ${e.message}`);
+
+    // Small pause between batches to avoid rate limiting
+    if (b < batches - 1) await sleep(2000);
   }
+
+  return allScored;
 }
