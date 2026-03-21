@@ -72,7 +72,7 @@ async function collectJobs(queries, countries, resultsPerQuery = 50, maxDaysOld 
 }
 
 async function scoreJobsWithGemini(jobs, resumeText, onProgress) {
-  const BATCH_SIZE = 20;
+  const BATCH_SIZE = 10;
   const allScored  = [];
   const batches    = Math.ceil(jobs.length / BATCH_SIZE);
 
