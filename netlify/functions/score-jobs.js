@@ -1,22 +1,21 @@
-// netlify/functions/score-jobs.js
-// Scores ONE batch of jobs (max 20) — called multiple times by the browser
+// api/score-jobs.js
+// Vercel serverless function — proxies Gemini API, keys never exposed to browser
+// Free tier: 60 second timeout (vs Netlify's 10s)
 
-exports.handler = async (event) => {
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Content-Type': 'application/json',
-  };
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Content-Type', 'application/json');
 
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
   }
 
   try {
-    const { jobs, resumeText } = JSON.parse(event.body || '{}');
+    const { jobs, resumeText } = req.body;
 
     if (!jobs || !resumeText) {
-      return { statusCode: 400, headers, body: JSON.stringify({ error: 'jobs and resumeText are required' }) };
+      return res.status(400).json({ error: 'jobs and resumeText are required' });
     }
 
     const postingsJson = JSON.stringify(jobs.map((j, i) => ({
@@ -63,7 +62,7 @@ Evaluate all ${jobs.length} jobs now.`;
 
     let attempt = 0;
     while (true) {
-      const res = await fetch(
+      const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
         {
           method: 'POST',
@@ -72,25 +71,25 @@ Evaluate all ${jobs.length} jobs now.`;
         }
       );
 
-      if (res.status === 429 && attempt < 3) {
+      if (response.status === 429 && attempt < 3) {
         attempt++;
         await new Promise(r => setTimeout(r, attempt * 10000));
         continue;
       }
 
-      if (!res.ok) {
-        const err = await res.text();
-        return { statusCode: res.status, headers, body: JSON.stringify({ error: `Gemini ${res.status}: ${err.slice(0, 300)}` }) };
+      if (!response.ok) {
+        const err = await response.text();
+        return res.status(response.status).json({ error: `Gemini ${response.status}: ${err.slice(0, 300)}` });
       }
 
-      const data = await res.json();
+      const data = await response.json();
       let raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/,'').trim();
+      raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
 
       const arrayStart = raw.indexOf('[');
       const arrayEnd   = raw.lastIndexOf(']');
       if (arrayStart === -1 || arrayEnd === -1) {
-        return { statusCode: 500, headers, body: JSON.stringify({ error: `No JSON array in Gemini response: ${raw.slice(0, 200)}` }) };
+        return res.status(500).json({ error: `No JSON array in Gemini response: ${raw.slice(0, 200)}` });
       }
 
       raw = raw.slice(arrayStart, arrayEnd + 1);
@@ -99,13 +98,13 @@ Evaluate all ${jobs.length} jobs now.`;
       try {
         scored = JSON.parse(raw);
       } catch(e) {
-        return { statusCode: 500, headers, body: JSON.stringify({ error: `JSON parse failed: ${e.message}. Raw: ${raw.slice(0, 200)}` }) };
+        return res.status(500).json({ error: `JSON parse failed: ${e.message}. Raw: ${raw.slice(0, 200)}` });
       }
 
-      return { statusCode: 200, headers, body: JSON.stringify({ scored }) };
+      return res.status(200).json({ scored });
     }
 
   } catch (e) {
-    return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) };
+    return res.status(500).json({ error: e.message });
   }
-};
+}
