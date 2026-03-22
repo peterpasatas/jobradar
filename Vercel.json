@@ -1,11 +1,8 @@
 {
   "functions": {
-    "api/fetch-jobs.js": {
-      "maxDuration": 60
-    },
-    "api/score-jobs.js": {
-      "maxDuration": 60
-    }
+    "api/fetch-jobs.js":       { "maxDuration": 60 },
+    "api/fetch-serp-jobs.js":  { "maxDuration": 60 },
+    "api/score-jobs.js":       { "maxDuration": 60 }
   },
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
