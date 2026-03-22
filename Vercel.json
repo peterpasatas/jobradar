@@ -6,6 +6,6 @@
     "api/score-jobs.js":       { "maxDuration": 60 }
   },
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/", "destination": "/index.html" }
   ]
 }
