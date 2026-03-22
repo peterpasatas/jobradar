@@ -1,1263 +1,172 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>JobRadar</title>
-<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js"></script>
-<style>
-:root {
-  --bg: #04050a;
-  --surface: #080b14;
-  --surface2: #0d1020;
-  --border: rgba(255,255,255,0.07);
-  --border-strong: rgba(255,255,255,0.12);
-  --accent: #0ff;
-  --accent-green: #00ffa3;
-  --accent-warm: #ff6b35;
-  --text: #f0f2ff;
-  --text-2: rgba(240,242,255,0.55);
-  --text-3: rgba(240,242,255,0.25);
-  --apply-color: #00ffa3;
-  --maybe-color: #ffb020;
-  --skip-color: #ff3b5c;
-  --nav-h: 64px;
-  --cmd-h: 56px;
-}
-
-* { box-sizing: border-box; margin: 0; padding: 0; }
-
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Figtree', sans-serif;
-  min-height: 100vh;
-  overflow-x: hidden;
-}
-
-/* ── ANIMATED ORBS ──────────────────────────────── */
-.orbs {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  overflow: hidden;
-}
-.orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.18;
-  animation: drift linear infinite;
-}
-.orb-1 { width: 600px; height: 600px; background: radial-gradient(circle, #0a4a8a 0%, transparent 70%); top: -10%; left: -5%; animation-duration: 25s; animation-delay: 0s; }
-.orb-2 { width: 500px; height: 500px; background: radial-gradient(circle, #003d2e 0%, transparent 70%); top: 40%; right: -8%; animation-duration: 30s; animation-delay: -10s; }
-.orb-3 { width: 400px; height: 400px; background: radial-gradient(circle, #2d0a4a 0%, transparent 70%); bottom: -5%; left: 30%; animation-duration: 20s; animation-delay: -5s; }
-.orb-4 { width: 300px; height: 300px; background: radial-gradient(circle, #4a1a00 0%, transparent 70%); top: 20%; left: 45%; animation-duration: 35s; animation-delay: -15s; opacity: 0.1; }
-
-@keyframes drift {
-  0%   { transform: translate(0, 0) scale(1); }
-  25%  { transform: translate(40px, -30px) scale(1.05); }
-  50%  { transform: translate(-20px, 50px) scale(0.95); }
-  75%  { transform: translate(-50px, 20px) scale(1.03); }
-  100% { transform: translate(0, 0) scale(1); }
-}
-
-/* Grain overlay */
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
-  opacity: 0.022;
-  pointer-events: none;
-  z-index: 1;
-}
-
-/* ── NAV ────────────────────────────────────────── */
-nav {
-  position: fixed;
-  top: 0; left: 0; right: 0;
-  height: var(--nav-h);
-  display: flex;
-  align-items: center;
-  padding: 0 28px;
-  gap: 0;
-  background: rgba(4,5,10,0.8);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--border);
-  z-index: 100;
-}
-
-.logo {
-  font-size: 17px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-  text-decoration: none;
-  color: var(--text);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.logo-mark {
-  width: 28px; height: 28px;
-  background: var(--accent-green);
-  border-radius: 7px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 13px; font-weight: 900; color: #04050a;
-}
-.logo-text { letter-spacing: -0.3px; }
-.logo-text span { color: var(--accent-green); }
-
-.nav-sep { width: 1px; height: 22px; background: var(--border); margin: 0 20px; }
-
-/* Source pill toggle */
-.source-toggle {
-  display: flex;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 3px;
-  gap: 2px;
-}
-.source-opt {
-  display: flex; align-items: center; gap: 5px;
-  padding: 5px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-2);
-  transition: all 0.18s ease;
-  border: none;
-  background: none;
-  white-space: nowrap;
-}
-.source-opt input[type=radio] { display: none; }
-.source-opt:has(input:checked),
-.source-opt.active {
-  background: rgba(255,255,255,0.08);
-  color: var(--text);
-}
-.source-dot {
-  width: 5px; height: 5px;
-  border-radius: 50%;
-  background: var(--text-3);
-  transition: background 0.18s;
-}
-.source-opt:has(input:checked) .source-dot,
-.source-opt.active .source-dot { background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green); }
-
-.nav-history {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 12px; color: var(--text-3);
-  margin-left: 16px;
-}
-.nav-history select {
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  color: var(--text-2);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  padding: 4px 10px;
-  outline: none;
-  cursor: pointer;
-  transition: border-color 0.18s;
-}
-.nav-history select:hover { border-color: var(--border-strong); }
-
-.nav-right {
-  margin-left: auto;
-  display: flex; align-items: center; gap: 14px;
-}
-#navEmail { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3); }
-.nav-btn {
-  font-family: 'Figtree', sans-serif;
-  font-size: 12px; font-weight: 500;
-  padding: 6px 14px;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  color: var(--text-2);
-  cursor: pointer;
-  transition: all 0.18s ease;
-}
-.nav-btn:hover { border-color: var(--border-strong); color: var(--text); }
-
-/* ── COMMAND BAR ────────────────────────────────── */
-.cmd-bar {
-  position: fixed;
-  top: var(--nav-h);
-  left: 0; right: 0;
-  height: var(--cmd-h);
-  background: rgba(4,5,10,0.7);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  padding: 0 28px;
-  gap: 16px;
-  z-index: 99;
-  overflow-x: auto;
-}
-.cmd-bar::-webkit-scrollbar { display: none; }
-
-.cmd-group {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-.cmd-label {
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: var(--text-3);
-  white-space: nowrap;
-}
-.cmd-sep { width: 1px; height: 20px; background: var(--border); }
-
-.tags-inline {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 4px;
-  align-items: center;
-}
-.tag-pill {
-  display: inline-flex; align-items: center; gap: 4px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 3px 9px;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--text-2);
-  white-space: nowrap;
-  transition: all 0.18s ease;
-}
-.tag-pill:hover { border-color: var(--border-strong); color: var(--text); }
-.tag-pill button {
-  background: none; border: none; color: var(--text-3);
-  cursor: pointer; font-size: 13px; line-height: 1;
-  padding: 0; transition: color 0.18s;
-}
-.tag-pill button:hover { color: var(--text); }
-
-.tag-input-inline {
-  background: transparent;
-  border: 1px dashed var(--border);
-  border-radius: 20px;
-  color: var(--text);
-  font-family: 'Figtree', sans-serif;
-  font-size: 11px;
-  padding: 3px 10px;
-  outline: none;
-  width: 100px;
-  transition: all 0.18s ease;
-}
-.tag-input-inline:focus { border-color: var(--accent-green); width: 140px; }
-.tag-input-inline::placeholder { color: var(--text-3); }
-
-.num-inline {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text-2);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  padding: 4px 8px;
-  outline: none;
-  width: 56px;
-  transition: all 0.18s;
-}
-.num-inline:focus { border-color: var(--accent-green); }
-
-/* Run button */
-.run-btn {
-  margin-left: auto;
-  flex-shrink: 0;
-  display: flex; align-items: center; gap: 7px;
-  padding: 8px 20px;
-  background: var(--accent-green);
-  color: #04050a;
-  border: none;
-  border-radius: 8px;
-  font-family: 'Figtree', sans-serif;
-  font-weight: 700;
-  font-size: 12px;
-  letter-spacing: 0.3px;
-  cursor: pointer;
-  transition: all 0.18s ease;
-  position: relative;
-  overflow: hidden;
-}
-.run-btn::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%);
-  opacity: 0;
-  transition: opacity 0.18s;
-}
-.run-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 24px rgba(0,255,163,0.4); }
-.run-btn:hover:not(:disabled)::before { opacity: 1; }
-.run-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; box-shadow: none; }
-
-.spinner { width: 13px; height: 13px; border: 2px solid rgba(4,5,10,0.3); border-top-color: #04050a; border-radius: 50%; animation: spin 0.65s linear infinite; display: none; }
-.spinner.on { display: block; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ── RESUME DRAWER ──────────────────────────────── */
-.resume-toggle-btn {
-  display: flex; align-items: center; gap: 6px;
-  padding: 5px 12px;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  color: var(--text-2);
-  font-family: 'Figtree', sans-serif;
-  font-size: 11px; font-weight: 500;
-  cursor: pointer;
-  transition: all 0.18s;
-  flex-shrink: 0;
-}
-.resume-toggle-btn:hover { border-color: var(--border-strong); color: var(--text); }
-.resume-toggle-btn .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--text-3); transition: background 0.18s; }
-.resume-toggle-btn.has-resume .dot { background: var(--accent-green); box-shadow: 0 0 5px var(--accent-green); }
-
-.resume-drawer {
-  position: fixed;
-  top: calc(var(--nav-h) + var(--cmd-h));
-  right: 0;
-  width: 360px;
-  background: var(--surface);
-  border-left: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  border-radius: 0 0 0 12px;
-  padding: 16px;
-  z-index: 98;
-  transform: translateX(100%);
-  transition: transform 0.25s ease;
-  box-shadow: -8px 8px 32px rgba(0,0,0,0.5);
-}
-.resume-drawer.open { transform: translateX(0); }
-.drawer-label { font-size: 9px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-3); margin-bottom: 10px; }
-.resume-drawer textarea {
-  width: 100%;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px; line-height: 1.6;
-  padding: 10px 12px;
-  outline: none;
-  resize: none;
-  height: 220px;
-  transition: border-color 0.18s;
-}
-.resume-drawer textarea:focus { border-color: rgba(0,255,163,0.35); }
-.drawer-actions { display: flex; gap: 8px; margin-top: 10px; }
-.btn-save {
-  flex: 1; padding: 8px;
-  background: rgba(0,255,163,0.1);
-  border: 1px solid rgba(0,255,163,0.25);
-  border-radius: 7px;
-  color: var(--accent-green);
-  font-family: 'Figtree', sans-serif;
-  font-size: 12px; font-weight: 600;
-  cursor: pointer; transition: all 0.18s;
-}
-.btn-save:hover { background: rgba(0,255,163,0.18); }
-.btn-close-drawer {
-  padding: 8px 14px;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  color: var(--text-2);
-  font-family: 'Figtree', sans-serif;
-  font-size: 12px;
-  cursor: pointer; transition: all 0.18s;
-}
-.btn-close-drawer:hover { border-color: var(--border-strong); color: var(--text); }
-#drawerSaveMsg { font-size: 11px; color: var(--accent-green); font-family: 'JetBrains Mono', monospace; min-height: 14px; margin-top: 6px; }
-
-/* ── MAIN CONTENT ───────────────────────────────── */
-.main {
-  padding-top: calc(var(--nav-h) + var(--cmd-h) + 24px);
-  padding-left: 28px;
-  padding-right: 28px;
-  padding-bottom: 40px;
-  position: relative;
-  z-index: 2;
-  display: grid;
-  grid-template-columns: 1fr 300px;
-  gap: 20px;
-  min-height: calc(100vh - var(--nav-h) - var(--cmd-h));
-}
-
-/* ── RESULTS AREA ───────────────────────────────── */
-.results-area {}
-
-/* Stats + filter bar */
-.results-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-}
-
-.stat-chip {
-  display: flex; align-items: center; gap: 5px;
-  padding: 5px 12px;
-  border-radius: 20px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  font-weight: 500;
-  border: 1px solid var(--border);
-  transition: all 0.18s;
-}
-.stat-chip.apply-chip { background: rgba(0,255,163,0.06); color: var(--apply-color); border-color: rgba(0,255,163,0.15); }
-.stat-chip.maybe-chip { background: rgba(255,176,32,0.06); color: var(--maybe-color); border-color: rgba(255,176,32,0.15); }
-.stat-chip.skip-chip  { background: rgba(255,59,92,0.06);  color: var(--skip-color);  border-color: rgba(255,59,92,0.15); }
-.stat-chip.total-chip { background: rgba(255,255,255,0.04); color: var(--text-2); }
-
-.filter-bar {
-  margin-left: auto;
-  display: flex; gap: 2px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 3px;
-}
-.f-btn {
-  padding: 5px 14px;
-  border: none; background: none;
-  font-family: 'Figtree', sans-serif;
-  font-size: 11px; font-weight: 500;
-  color: var(--text-3);
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.18s ease;
-}
-.f-btn.active { background: rgba(255,255,255,0.08); color: var(--text); }
-
-/* ── JOB CARDS ──────────────────────────────────── */
-.cards-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 12px;
-}
-
-.job-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  overflow: hidden;
-  transition: all 0.22s ease;
-  animation: cardIn 0.3s ease forwards;
-  opacity: 0;
-  transform: translateY(10px);
-  cursor: default;
-  position: relative;
-}
-
-.job-card.wide { grid-column: span 2; }
-
-@keyframes cardIn { to { opacity: 1; transform: translateY(0); } }
-
-.job-card:hover {
-  border-color: var(--border-strong);
-  transform: translateY(-3px);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
-}
-
-/* Score accent stripe at top */
-.card-stripe {
-  height: 2px;
-  width: 100%;
-}
-.card-stripe.apply { background: linear-gradient(90deg, var(--apply-color), rgba(0,255,163,0.2)); }
-.card-stripe.maybe { background: linear-gradient(90deg, var(--maybe-color), rgba(255,176,32,0.2)); }
-.card-stripe.skip  { background: linear-gradient(90deg, var(--skip-color), rgba(255,59,92,0.1)); }
-
-.card-body { padding: 18px; }
-
-/* Card top: title + score ring */
-.card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 10px;
-}
-
-.card-left { flex: 1; min-width: 0; }
-
-.job-title {
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1.25;
-  letter-spacing: -0.2px;
-  color: var(--text);
-  margin-bottom: 5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.job-company {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-2);
-  margin-bottom: 3px;
-}
-
-.job-location {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  color: var(--text-3);
-}
-
-/* Score ring — THE HERO */
-.score-wrap {
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.ring-svg {
-  width: 64px; height: 64px;
-  transform: rotate(-90deg);
-}
-.ring-track { fill: none; stroke: rgba(255,255,255,0.05); stroke-width: 4; }
-.ring-fill { fill: none; stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); }
-.ring-fill.apply { stroke: var(--apply-color); filter: drop-shadow(0 0 6px rgba(0,255,163,0.5)); }
-.ring-fill.maybe { stroke: var(--maybe-color); filter: drop-shadow(0 0 6px rgba(255,176,32,0.5)); }
-.ring-fill.skip  { stroke: var(--skip-color);  filter: drop-shadow(0 0 4px rgba(255,59,92,0.3)); }
-
-.score-center {
-  position: absolute;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-}
-
-.ring-container {
-  position: relative;
-  width: 64px; height: 64px;
-  display: flex; align-items: center; justify-content: center;
-}
-
-.score-number {
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 500;
-  font-size: 18px;
-  line-height: 1;
-}
-.score-number.apply { color: var(--apply-color); }
-.score-number.maybe { color: var(--maybe-color); }
-.score-number.skip  { color: var(--skip-color); }
-
-.rec-label {
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  margin-top: 1px;
-}
-.rec-label.apply { color: var(--apply-color); }
-.rec-label.maybe { color: var(--maybe-color); }
-.rec-label.skip  { color: var(--skip-color); opacity: 0.7; }
-
-.job-summary {
-  font-size: 12px;
-  color: var(--text-3);
-  line-height: 1.6;
-  margin-bottom: 12px;
-}
-
-.skills-row {
-  display: flex; flex-wrap: wrap; gap: 4px;
-  margin-bottom: 12px;
-}
-.skill-tag {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid var(--border);
-  color: var(--text-3);
-  border-radius: 4px;
-  padding: 2px 7px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  transition: all 0.18s;
-}
-.skill-tag:hover { border-color: var(--border-strong); color: var(--text-2); }
-
-.card-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 10px;
-  border-top: 1px solid var(--border);
-}
-
-.salary-text { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-3); }
-
-.view-btn {
-  display: flex; align-items: center; gap: 5px;
-  font-size: 11px; font-weight: 600;
-  color: var(--text-2);
-  text-decoration: none;
-  padding: 5px 12px;
-  border-radius: 7px;
-  border: 1px solid var(--border);
-  transition: all 0.18s ease;
-  background: transparent;
-}
-.view-btn:hover {
-  color: var(--accent-green);
-  border-color: rgba(0,255,163,0.3);
-  background: rgba(0,255,163,0.06);
-  box-shadow: 0 0 16px rgba(0,255,163,0.12);
-}
-.view-arrow { font-size: 10px; transition: transform 0.18s; }
-.view-btn:hover .view-arrow { transform: translateX(2px); }
-
-.empty-state {
-  grid-column: 1 / -1;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  padding: 80px 20px; gap: 12px;
-  color: var(--text-3);
-  text-align: center;
-}
-.empty-icon { font-size: 40px; opacity: 0.4; }
-.empty-title { font-size: 16px; font-weight: 600; color: var(--text-2); }
-.empty-sub { font-size: 13px; line-height: 1.7; max-width: 320px; }
-
-/* ── TERMINAL PANEL ─────────────────────────────── */
-.terminal {
-  position: sticky;
-  top: calc(var(--nav-h) + var(--cmd-h) + 24px);
-  height: calc(100vh - var(--nav-h) - var(--cmd-h) - 48px);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.term-header {
-  padding: 14px 16px 10px;
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; gap: 8px;
-  flex-shrink: 0;
-}
-
-.term-dots {
-  display: flex; gap: 5px;
-}
-.term-dot { width: 9px; height: 9px; border-radius: 50%; }
-.td-red   { background: #ff5f57; }
-.td-amber { background: #ffbd2e; }
-.td-green { background: #28c840; }
-
-.term-title {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px; font-weight: 500;
-  color: var(--text-3);
-  margin-left: 4px;
-  letter-spacing: 0.5px;
-}
-
-.status-indicator {
-  margin-left: auto;
-  display: flex; align-items: center; gap: 5px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  color: var(--text-3);
-}
-.status-led {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: var(--text-3);
-  transition: all 0.3s;
-}
-.status-led.running {
-  background: var(--accent-green);
-  animation: led-pulse 1.2s ease-out infinite;
-}
-@keyframes led-pulse {
-  0%   { box-shadow: 0 0 0 0 rgba(0,255,163,0.6); }
-  70%  { box-shadow: 0 0 0 5px rgba(0,255,163,0); }
-  100% { box-shadow: 0 0 0 0 rgba(0,255,163,0); }
-}
-
-.term-progress {
-  padding: 10px 16px 8px;
-  flex-shrink: 0;
-}
-.prog-bar-wrap {
-  height: 2px; background: rgba(255,255,255,0.05);
-  border-radius: 2px; overflow: hidden; margin-bottom: 5px;
-}
-.prog-bar {
-  height: 100%;
-  background: linear-gradient(90deg, var(--accent-green), var(--accent));
-  border-radius: 2px; transition: width 0.35s ease; width: 0%;
-}
-.prog-label {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px; color: var(--text-3);
-}
-
-.term-log {
-  flex: 1; overflow-y: auto;
-  padding: 8px 16px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px; line-height: 1.7;
-}
-.term-log::-webkit-scrollbar { width: 3px; }
-.term-log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
-.log-row { display: flex; gap: 8px; align-items: flex-start; }
-.log-t  { color: var(--text-3); flex-shrink: 0; }
-.log-ok   { color: var(--apply-color); }
-.log-warn { color: var(--maybe-color); }
-.log-err  { color: var(--skip-color); }
-.log-info { color: #7b8cff; }
-
-/* scrollbar global */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-</style>
-</head>
-<body>
-
-<div class="orbs">
-  <div class="orb orb-1"></div>
-  <div class="orb orb-2"></div>
-  <div class="orb orb-3"></div>
-  <div class="orb orb-4"></div>
-</div>
-
-<!-- NAV -->
-<nav>
-  <a href="results.html" class="logo">
-    <div class="logo-mark">JR</div>
-    <span class="logo-text">Job<span>Radar</span></span>
-  </a>
-
-  <div class="nav-sep"></div>
-
-  <div class="source-toggle">
-    <label class="source-opt">
-      <input type="radio" name="source" value="adzuna" id="srcAdzuna" checked onchange="toggleSource()">
-      <span class="source-dot"></span><span>Adzuna</span>
-    </label>
-    <label class="source-opt">
-      <input type="radio" name="source" value="serp" id="srcSerp" onchange="toggleSource()">
-      <span class="source-dot"></span><span>Google Jobs</span>
-    </label>
-  </div>
-
-  <div class="nav-history" id="historyBar" style="display:none;">
-    <span>History</span>
-    <select id="historySelect" onchange="loadHistoricRun(this.value)"><option value="">Select run…</option></select>
-  </div>
-
-  <div class="nav-right">
-    <span id="navEmail"></span>
-    <button class="nav-btn" onclick="signOut()">Sign out</button>
-  </div>
-</nav>
-
-<!-- COMMAND BAR -->
-<div class="cmd-bar" id="cmdBar">
-  <!-- Adzuna controls -->
-  <div class="cmd-group adzuna-panel" id="cmdAdzuna">
-    <span class="cmd-label">Titles</span>
-    <div class="tags-inline" id="queriesInline"></div>
-    <input class="tag-input-inline" id="queryInput" placeholder="+ title">
-    <div class="cmd-sep"></div>
-    <span class="cmd-label">Countries</span>
-    <div class="tags-inline" id="countriesInline"></div>
-    <input class="tag-input-inline" id="countryInput" placeholder="+ gb/de">
-    <div class="cmd-sep"></div>
-    <span class="cmd-label">Results</span>
-    <input type="number" class="num-inline" id="resultsPerQuery" value="10" min="1" max="50">
-    <span class="cmd-label">Days</span>
-    <input type="number" class="num-inline" id="maxDaysOld" value="1" min="1" max="90">
-  </div>
-
-  <!-- Google Jobs controls -->
-  <div class="cmd-group" id="cmdSerp" style="display:none;">
-    <span class="cmd-label">Titles</span>
-    <div class="tags-inline" id="serpQueriesInline"></div>
-    <input class="tag-input-inline" id="serpQueryInput" placeholder="+ title">
-    <div class="cmd-sep"></div>
-    <span class="cmd-label">Cities</span>
-    <div class="tags-inline" id="serpCitiesInline"></div>
-    <input class="tag-input-inline" id="serpCityInput" placeholder="+ London">
-    <div class="cmd-sep"></div>
-    <span class="cmd-label">Countries</span>
-    <div class="tags-inline" id="serpCountriesInline"></div>
-    <input class="tag-input-inline" id="serpCountryInput" placeholder="+ United Kingdom">
-    <div class="cmd-sep"></div>
-    <span class="cmd-label">Posted</span>
-    <select id="serpDateRange" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:6px;color:rgba(240,242,255,0.55);font-family:'JetBrains Mono',monospace;font-size:11px;padding:4px 8px;outline:none;cursor:pointer;transition:all 0.18s;">
-      <option value="today">Today</option>
-      <option value="3days" selected>3 days</option>
-      <option value="week">Last week</option>
-    </select>
-  </div>
-
-  <button class="resume-toggle-btn" id="resumeToggleBtn" onclick="toggleResume()">
-    <span class="dot" id="resumeDot"></span>
-    Resume
-  </button>
-
-  <button class="run-btn" id="runBtn" onclick="runSearch()">
-    <div class="spinner" id="btnSpinner"></div>
-    <span id="btnLabel">Run Search</span>
-  </button>
-</div>
-
-<!-- RESUME DRAWER -->
-<div class="resume-drawer" id="resumeDrawer">
-  <div class="drawer-label">Candidate Resume</div>
-  <textarea id="resumeText" placeholder="Paste your full resume here…"></textarea>
-  <div class="drawer-actions">
-    <button class="btn-save" onclick="savePreferences()">Save</button>
-    <button class="btn-close-drawer" onclick="toggleResume()">Done</button>
-  </div>
-  <div id="drawerSaveMsg"></div>
-</div>
-
-<!-- MAIN -->
-<div class="main">
-
-  <!-- RESULTS -->
-  <div class="results-area">
-    <div class="results-header" id="resultsHeader" style="display:none;">
-      <div class="stat-chip apply-chip" id="applyCount"></div>
-      <div class="stat-chip maybe-chip" id="maybeCount"></div>
-      <div class="stat-chip skip-chip"  id="skipCount"></div>
-      <div class="stat-chip total-chip" id="totalCount"></div>
-
-      <!-- Location filter -->
-      <select id="filterLocation" onchange="applyFilters()" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:7px;color:rgba(240,242,255,0.55);font-family:'JetBrains Mono',monospace;font-size:11px;padding:5px 10px;outline:none;cursor:pointer;transition:all 0.18s;">
-        <option value="">All locations</option>
-      </select>
-
-      <!-- Platform filter -->
-      <select id="filterPlatform" onchange="applyFilters()" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:7px;color:rgba(240,242,255,0.55);font-family:'JetBrains Mono',monospace;font-size:11px;padding:5px 10px;outline:none;cursor:pointer;transition:all 0.18s;">
-        <option value="">All platforms</option>
-      </select>
-
-      <div class="filter-bar" id="filterBar">
-        <button class="f-btn active" onclick="setRecFilter('all',this)">All</button>
-        <button class="f-btn" onclick="setRecFilter('Apply',this)">Apply</button>
-        <button class="f-btn" onclick="setRecFilter('Maybe',this)">Maybe</button>
-        <button class="f-btn" onclick="setRecFilter('Skip',this)">Skip</button>
-      </div>
-    </div>
-    <div class="cards-grid" id="cards">
-      <div class="empty-state">
-        <div class="empty-icon">◎</div>
-        <div class="empty-title">No results yet</div>
-        <div class="empty-sub">Set your job titles, countries, paste your resume, then run a search.</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- TERMINAL -->
-  <div class="terminal">
-    <div class="term-header">
-      <div class="term-dots">
-        <div class="term-dot td-red"></div>
-        <div class="term-dot td-amber"></div>
-        <div class="term-dot td-green"></div>
-      </div>
-      <span class="term-title">jobradar — terminal</span>
-      <div class="status-indicator">
-        <div class="status-led" id="statusLed"></div>
-        <span id="statusText">idle</span>
-      </div>
-    </div>
-    <div class="term-progress">
-      <div class="prog-bar-wrap"><div class="prog-bar" id="progressBar"></div></div>
-      <div class="prog-label" id="progressLabel">—</div>
-    </div>
-    <div class="term-log" id="progressLog"></div>
-  </div>
-
-</div>
-
-<script>
-const sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON);
-let userId = null, allResults = [];
-let queries = [], countries = [], serpQueries = [], serpCities = [], serpCountries = [];
-
-sb.auth.getSession().then(({data}) => {
-  if (!data.session) { window.location.href = 'index.html'; return; }
-  userId = data.session.user.id;
-  document.getElementById('navEmail').textContent = data.session.user.email;
-  loadProfile(); loadHistory();
-});
-
-async function signOut() { await sb.auth.signOut(); window.location.href = 'index.html'; }
-
-// Resume drawer toggle
-let drawerOpen = false;
-function toggleResume() {
-  drawerOpen = !drawerOpen;
-  document.getElementById('resumeDrawer').classList.toggle('open', drawerOpen);
-}
-
-// Update resume indicator dot
-function updateResumeDot() {
-  const hasResume = document.getElementById('resumeText').value.trim().length > 0;
-  document.getElementById('resumeToggleBtn').classList.toggle('has-resume', hasResume);
-}
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('resumeText').addEventListener('input', updateResumeDot);
-});
-
-async function loadProfile() {
-  let { data, error } = await sb.from('profiles').select('*').eq('id', userId).single();
-  if (!data || error) {
-    const session = (await sb.auth.getSession()).data.session;
-    const { data: newRow } = await sb.from('profiles').upsert({ id: userId, email: session?.user?.email || '', search_queries: [], search_countries: [] }, { onConflict: 'id' }).select().single();
-    data = newRow;
-  }
-  if (!data) { renderAllTags(); return; }
-  // Only resume is loaded — preferences are session-only
-  if (data.resume_text) { document.getElementById('resumeText').value = data.resume_text; updateResumeDot(); }
-  renderAllTags();
-}
-
-async function saveResume() {
-  // Only resume text is persisted — preferences are session-only
-  const { error } = await sb.from('profiles').update({
-    resume_text: document.getElementById('resumeText').value.trim(),
-    updated_at: new Date().toISOString(),
-  }).eq('id', userId);
-  updateResumeDot();
-  return !error;
-}
-
-async function savePreferences() {
-  const ok = await saveResume();
-  const msg = document.getElementById('drawerSaveMsg');
-  msg.textContent = ok ? 'Resume saved ✓' : 'Error saving';
-  setTimeout(() => msg.textContent = '', 2500);
-}
-
-async function loadHistory() {
-  const { data } = await sb.from('job_results').select('run_id,run_date,created_at').eq('user_id', userId).order('created_at', { ascending: false });
-  if (!data?.length) return;
-  const seen = new Set(), runs = [];
-  for (const r of data) { const key = r.run_id || r.run_date; if (!seen.has(key)) { seen.add(key); runs.push({ run_id: key, run_date: r.run_date, created_at: r.created_at }); } }
-  const total = runs.length;
-  const sel = document.getElementById('historySelect');
-  sel.innerHTML = '<option value="">Select run…</option>' + runs.map((r, i) => `<option value="${r.run_id}">Run ${total-i} — ${formatDate(r.run_date)} ${formatTime(r.created_at)}</option>`).join('');
-  document.getElementById('historyBar').style.display = 'flex';
-}
-
-async function loadHistoricRun(runId) {
-  if (!runId) return;
-  const { data } = await sb.from('job_results').select('*').eq('user_id', userId).eq('run_id', runId).order('relevance_score', { ascending: false });
-  if (!data) return;
-  allResults = data.map(r => ({...r, skills_arr: r.extracted_skills || []}));
-  renderStats(allResults); renderCards(allResults);
-  document.getElementById('resultsHeader').style.display = 'flex';
-}
-
-async function runSearch() {
-  const resume = document.getElementById('resumeText').value.trim();
-  if (!resume) { if (!drawerOpen) toggleResume(); addLog('Please add your resume first.', 'warn'); return; }
-  await saveResume(); // only resume is persisted
-  const source = document.querySelector('input[name="source"]:checked').value;
-  const runId = Date.now().toString();
-
-  allResults = [];
-  document.getElementById('progressLog').innerHTML = '';
-  document.getElementById('cards').innerHTML = '';
-  document.getElementById('resultsHeader').style.display = 'none';
-  document.getElementById('runBtn').disabled = true;
-  document.getElementById('btnSpinner').classList.add('on');
-  document.getElementById('btnLabel').textContent = 'Running…';
-  document.getElementById('statusLed').classList.add('running');
-  document.getElementById('statusText').textContent = 'running';
-  setProgress(0, source === 'serp' ? 'Fetching Google Jobs…' : 'Fetching Adzuna…');
-
-  try {
-    const resultsPerQuery = parseInt(document.getElementById('resultsPerQuery').value) || 50;
-    const maxDaysOld = parseInt(document.getElementById('maxDaysOld').value) || 15;
-    let jobCollection;
-
-    if (source === 'serp') {
-      if (!serpQueries.length) { addLog('Add at least one title for Google Jobs.', 'err'); resetBtn(); return; }
-      if (!serpCountries.length) { addLog('Add at least one country for Google Jobs.', 'err'); resetBtn(); return; }
-      const serpLocations = serpCities.length ? serpCities : serpCountries;
-      const serpDateRange = document.getElementById('serpDateRange').value;
-      jobCollection = await collectSerpJobs(serpQueries, serpLocations, serpCountries, serpDateRange, (done, total, label) => { addLog(`${label} ✓`, 'ok'); setProgress((done/total)*40, `Fetching… ${done}/${total}`); });
-    } else {
-      if (!queries.length) { addLog('Add at least one job title.', 'err'); resetBtn(); return; }
-      if (!countries.length) { addLog('Add at least one country.', 'err'); resetBtn(); return; }
-      jobCollection = await collectJobs(queries, countries, resultsPerQuery, maxDaysOld, (done, total, label) => { addLog(`${label} ✓`, 'ok'); setProgress((done/total)*40, `Fetching… ${done}/${total}`); });
-    }
-
-    const { jobs, skipped } = jobCollection;
-    addLog(`${jobs.length} jobs found (${skipped} excluded)`, 'info');
-    if (!jobs.length) { addLog('No jobs found. Adjust your search.', 'err'); resetBtn(); return; }
-
-    setProgress(45, `Scoring ${jobs.length} jobs…`);
-    addLog(`Scoring with Gemini…`, 'info');
-    // Single updating line for scoring progress — no per-job noise
-    let scoringLogId = 'scoring-progress-line';
-    const scored = await scoreJobsWithGemini(jobs, resume, (pct, done, total) => {
-      updateScoringLine(scoringLogId, pct, done, total);
-      setProgress(45 + (pct * 0.45), `Scoring… ${pct}%`);
-    });
-    finaliseScoringLine(scoringLogId, scored.length);
-
-    const indexMap = {};
-    scored.forEach(s => { if (s?.index != null) indexMap[s.index] = s; });
-    const today = new Date().toISOString().slice(0,10);
-    const rows = [];
-    for (let i = 0; i < jobs.length; i++) {
-      const job = jobs[i], a = indexMap[i];
-      if (!a) continue;
-      const skills = Array.isArray(a.skills) ? a.skills : [];
-      rows.push({ user_id: userId, run_date: today, run_id: runId, job_id: job.id, title: a.extracted_title || job.title, company: job.company, location: a.location || job.location, summary: a.summary || '', extracted_skills: skills, experience_years: a.experience_years || 0, relevance_score: a.relevance_score || 0, recommendation: a.recommendation || 'Unknown', salary_min: job.salary_min, salary_max: job.salary_max, url: job.url, via: job.via || job.source || '', skills_arr: skills });
-    }
-    rows.sort((a,b) => (b.relevance_score||0)-(a.relevance_score||0));
-    allResults = rows;
-
-    setProgress(95, 'Saving…');
-    const dbRows = rows.map(({skills_arr,...r}) => r);
-    await sb.from('job_results').insert(dbRows);
-    addLog(`Saved ${rows.length} results ✓`, 'ok');
-    setProgress(100, `Done — ${rows.length} results`);
-
-    renderStats(rows); renderCards(rows);
-    document.getElementById('resultsHeader').style.display = 'flex';
-    await loadHistory();
-
-  } catch(e) { addLog(`Error: ${e.message}`, 'err'); console.error(e); }
-  resetBtn();
-}
-
-function renderStats(results) {
-  const apply = results.filter(r=>r.recommendation==='Apply').length;
-  const maybe = results.filter(r=>r.recommendation==='Maybe').length;
-  const skip  = results.filter(r=>r.recommendation==='Skip').length;
-  document.getElementById('applyCount').textContent = `${apply} Apply`;
-  document.getElementById('maybeCount').textContent = `${maybe} Maybe`;
-  document.getElementById('skipCount').textContent  = `${skip} Skip`;
-  document.getElementById('totalCount').textContent = `${results.length} total`;
-
-  // Populate location filter
-  const locations = [...new Set(results.map(r => r.location).filter(Boolean))].sort();
-  const locSel = document.getElementById('filterLocation');
-  if (locSel) {
-    locSel.innerHTML = '<option value="">All locations</option>' +
-      locations.map(l => `<option value="${l}">${l}</option>`).join('');
-  }
-
-  // Populate platform filter from via field
-  const platforms = [...new Set(results.map(r => r.via || r.source).filter(Boolean))].sort();
-  const platSel = document.getElementById('filterPlatform');
-  if (platSel) {
-    platSel.innerHTML = '<option value="">All platforms</option>' +
-      platforms.map(p => `<option value="${p}">${p}</option>`).join('');
-  }
-}
-
-function renderCards(results) {
-  if (!results.length) {
-    document.getElementById('cards').innerHTML = `<div class="empty-state"><div class="empty-icon">◎</div><div class="empty-title">No matches</div><div class="empty-sub">Try a different filter.</div></div>`;
-    return;
-  }
-  const r = 27, circ = 2 * Math.PI * r;
-  document.getElementById('cards').innerHTML = results.map((job, i) => {
-    const rec = (job.recommendation || 'skip').toLowerCase();
-    const score = typeof job.relevance_score === 'number' ? job.relevance_score : 0;
-    const offset = circ - (score / 100) * circ;
-    const isWide = score > 85;
-    const skills = (job.skills_arr || job.extracted_skills || []).slice(0,5);
-    const skillsHtml = skills.map(s => `<span class="skill-tag">${s}</span>`).join('');
-    const salary = (job.salary_min && job.salary_max) ? `£${Math.round(job.salary_min/1000)}k–£${Math.round(job.salary_max/1000)}k` : '';
-    const link = job.url ? `<a href="${job.url}" target="_blank" class="view-btn"><span>View</span><span class="view-arrow">→</span></a>` : '';
-    return `
-    <div class="job-card ${rec}${isWide?' wide':''}" style="animation-delay:${i*0.04}s">
-      <div class="card-stripe ${rec}"></div>
-      <div class="card-body">
-        <div class="card-top">
-          <div class="card-left">
-            <div class="job-title">${job.title}</div>
-            <div class="job-company">${job.company}</div>
-            <div class="job-location">${job.location}</div>
-          </div>
-          <div class="score-wrap">
-            <div class="ring-container">
-              <svg class="ring-svg" viewBox="0 0 64 64">
-                <circle class="ring-track" cx="32" cy="32" r="${r}"/>
-                <circle class="ring-fill ${rec}" cx="32" cy="32" r="${r}" stroke-dasharray="${circ.toFixed(2)}" stroke-dashoffset="${offset.toFixed(2)}"/>
-              </svg>
-              <div class="score-center">
-                <span class="score-number ${rec}">${score}</span>
-              </div>
-            </div>
-            <span class="rec-label ${rec}">${job.recommendation}</span>
-          </div>
-        </div>
-        ${job.summary ? `<div class="job-summary">${job.summary}</div>` : ''}
-        ${skillsHtml ? `<div class="skills-row">${skillsHtml}</div>` : ''}
-        <div class="card-footer">
-          <span class="salary-text">${salary}</span>
-          ${link}
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-let activeRecFilter = 'all';
-
-function setRecFilter(type, btn) {
-  activeRecFilter = type;
-  document.querySelectorAll('.f-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  applyFilters();
-}
-
-function applyFilters() {
-  const loc      = document.getElementById('filterLocation')?.value || '';
-  const platform = document.getElementById('filterPlatform')?.value || '';
-  let filtered = allResults;
-
-  if (activeRecFilter !== 'all') {
-    filtered = filtered.filter(r => r.recommendation === activeRecFilter);
-  }
-  if (loc) {
-    filtered = filtered.filter(r => (r.location || '').toLowerCase().includes(loc.toLowerCase()));
-  }
-  if (platform) {
-    filtered = filtered.filter(r => (r.via || r.source || '').toLowerCase().includes(platform.toLowerCase()));
-  }
-  renderCards(filtered);
-}
-
-// ── INLINE TAG INPUTS ────────────────────────────
-function renderAllTags() {
-  renderInlineTags('queriesInline',      queries,       'queryInput');
-  renderInlineTags('countriesInline',    countries,     'countryInput');
-  renderInlineTags('serpQueriesInline',  serpQueries,   'serpQueryInput');
-  renderInlineTags('serpCitiesInline',   serpCities,    'serpCityInput');
-  renderInlineTags('serpCountriesInline',serpCountries, 'serpCountryInput');
-}
-
-function renderInlineTags(containerId, arr, inputId) {
-  const container = document.getElementById(containerId);
-  container.querySelectorAll('.tag-pill').forEach(t => t.remove());
-  arr.forEach((tag, i) => {
-    const el = document.createElement('span');
-    el.className = 'tag-pill';
-    el.innerHTML = `${tag}<button onclick="removeInlineTag('${containerId}','${inputId}',${i})">×</button>`;
-    container.appendChild(el);
-  });
-}
-
-function removeInlineTag(containerId, inputId, idx) {
-  const arrMap = { 'queriesInline': queries, 'countriesInline': countries, 'serpQueriesInline': serpQueries, 'serpCitiesInline': serpCities, 'serpCountriesInline': serpCountries };
-  const arr = arrMap[containerId]; if (!arr) return;
-  arr.splice(idx, 1); renderInlineTags(containerId, arr, inputId);
-}
-
-function setupInlineTagInput(inputId, arr, containerId) {
-  const input = document.getElementById(inputId);
-  const handler = e => {
-    if (e.key !== 'Enter' && e.key !== ',') return;
-    e.preventDefault(); e.stopPropagation();
-    const val = e.target.value.trim().replace(/,$/, '');
-    if (val && !arr.includes(val)) { arr.push(val); renderInlineTags(containerId, arr, inputId); }
-    e.target.value = '';
+// config.js — all API calls go through Vercel API functions, keys are server-side only
+const CONFIG = {
+  SUPABASE_URL:  'https://tfeuzkbxezahbdhxqnxt.supabase.co',
+  SUPABASE_ANON: 'sb_publishable_jB2LDhCIsQMsnqkbCvYO4Q_tr6HescW',
+};
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function isExcluded(job) {
+  const title    = (job.title || '').toLowerCase();
+  const contract = (job.contract_type || '').toLowerCase();
+  const contractKw = ['contract','contractor','freelance','fixed term','fixed-term'];
+  const juniorKw   = ['junior','graduate','entry level','entry-level','trainee','intern'];
+  return contractKw.some(k => contract.includes(k))
+      || contractKw.some(k => title.includes(k))
+      || juniorKw.some(k => title.includes(k));
+}
+
+function normaliseJob(job) {
+  const company  = job.company  || {};
+  const location = job.location || {};
+  const area     = location.area || [];
+  return {
+    id:          String(job.id || Math.random()),
+    title:       job.title || 'N/A',
+    company:     (typeof company === 'object' ? company.display_name : company) || 'N/A',
+    location:    area.length ? area.join(', ') : (location.display_name || 'N/A'),
+    description: (job.description || '').slice(0, 2500),
+    url:         job.redirect_url || '',
+    salary_min:  job.salary_min || null,
+    salary_max:  job.salary_max || null,
   };
-  input.addEventListener('keydown', handler);
-  input.addEventListener('keyup', e => { if (e.key === 'Enter') e.preventDefault(); });
 }
 
-setupInlineTagInput('queryInput',      queries,       'queriesInline');
-setupInlineTagInput('countryInput',    countries,     'countriesInline');
-setupInlineTagInput('serpQueryInput',  serpQueries,   'serpQueriesInline');
-setupInlineTagInput('serpCityInput',   serpCities,    'serpCitiesInline');
-setupInlineTagInput('serpCountryInput',serpCountries, 'serpCountriesInline');
-
-function toggleSource() {
-  const isSerp = document.getElementById('srcSerp').checked;
-  document.getElementById('cmdAdzuna').style.display = isSerp ? 'none' : 'flex';
-  document.getElementById('cmdSerp').style.display   = isSerp ? 'flex' : 'none';
-}
-
-// ── TERMINAL HELPERS ─────────────────────────────
-function setProgress(pct, label) {
-  document.getElementById('progressBar').style.width = pct + '%';
-  document.getElementById('progressLabel').textContent = label;
-}
-
-function addLog(msg, type = 'info') {
-  const log = document.getElementById('progressLog');
-  const row = document.createElement('div');
-  row.className = 'log-row';
-  const ts = new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  row.innerHTML = `<span class="log-t">${ts}</span><span class="log-${type}">${msg}</span>`;
-  log.appendChild(row);
-  log.scrollTop = log.scrollHeight;
-}
-
-function updateScoringLine(id, pct, done, total) {
-  const log = document.getElementById('progressLog');
-  let line = document.getElementById(id);
-  if (!line) {
-    line = document.createElement('div');
-    line.className = 'log-row';
-    line.id = id;
-    log.appendChild(line);
-  }
-  const bar = '█'.repeat(Math.floor(pct / 5)) + '░'.repeat(20 - Math.floor(pct / 5));
-  line.innerHTML = `<span class="log-t">${new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span><span class="log-info">Scoring  ${bar}  ${pct}%  (${done}/${total})</span>`;
-  log.scrollTop = log.scrollHeight;
-}
-
-function finaliseScoringLine(id, count) {
-  const line = document.getElementById(id);
-  if (line) {
-    const bar = '█'.repeat(20);
-    line.innerHTML = `<span class="log-t">${new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span><span class="log-ok">Scoring  ${bar}  100%  (${count}/${count}) ✓</span>`;
+async function fetchAdzunaJobs(query, country, results = 50, maxDaysOld = 15) {
+  try {
+    const res = await fetch('/api/fetch-jobs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, country, results, maxDaysOld }),
+    });
+    if (!res.ok) throw new Error(`Function error: ${res.status}`);
+    const data = await res.json();
+    return data.results || [];
+  } catch(e) {
+    console.warn(`fetch-jobs [${country}] "${query}": ${e.message}`);
+    return [];
   }
 }
 
-function resetBtn() {
-  document.getElementById('runBtn').disabled = false;
-  document.getElementById('btnSpinner').classList.remove('on');
-  document.getElementById('btnLabel').textContent = 'Run Search';
-  document.getElementById('statusLed').classList.remove('running');
-  document.getElementById('statusText').textContent = 'idle';
+async function collectJobs(queries, countries, resultsPerQuery = 50, maxDaysOld = 15, onProgress) {
+  const unique = new Map();
+  let skipped = 0;
+  const total = queries.length * countries.length;
+  let done = 0;
+
+  for (const country of countries) {
+    for (const query of queries) {
+      const raw = await fetchAdzunaJobs(query, country, resultsPerQuery, maxDaysOld);
+      for (const job of raw) {
+        const id = String(job.id || '');
+        if (!id || unique.has(id)) continue;
+        if (isExcluded(job)) { skipped++; continue; }
+        unique.set(id, normaliseJob(job));
+      }
+      done++;
+      onProgress && onProgress(done, total, `[${country.toUpperCase()}] "${query}"`);
+      await sleep(300);
+    }
+  }
+  return { jobs: [...unique.values()], skipped };
 }
 
-function formatDate(d) { return new Date(d+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}); }
-function formatTime(ts) { if (!ts) return ''; return new Date(ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); }
-</script>
-</body>
-</html>
+// Maps country names to SerpAPI gl/hl/location params
+const SERP_COUNTRY_MAP = {
+  'United Kingdom':  { gl: 'gb', hl: 'en', location: 'London, England, United Kingdom' },
+  'Germany':         { gl: 'de', hl: 'de', location: 'Berlin, Germany' },
+  'Spain':           { gl: 'es', hl: 'es', location: 'Madrid, Spain' },
+  'Portugal':        { gl: 'pt', hl: 'pt', location: 'Lisbon, Portugal' },
+  'Belgium':         { gl: 'be', hl: 'en', location: 'Brussels, Belgium' },
+  'Luxembourg':      { gl: 'lu', hl: 'en', location: 'Luxembourg City, Luxembourg' },
+  'Switzerland':     { gl: 'ch', hl: 'en', location: 'Zurich, Switzerland' },
+  'Netherlands':     { gl: 'nl', hl: 'nl', location: 'Amsterdam, Netherlands' },
+  'France':          { gl: 'fr', hl: 'fr', location: 'Paris, France' },
+  'Remote':          { gl: 'gb', hl: 'en', location: 'London, England, United Kingdom' },
+};
+
+async function fetchSerpJobs(query, location, gl = 'gb', hl = 'en', dateRange = '3days') {
+  try {
+    const res = await fetch('/api/fetch-serp-jobs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, location, gl, hl, dateRange }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.debug) console.log(`SerpAPI debug [${location}] "${query}":`, data.debug);
+    if (data.debug?.serpapi_error) console.error('SerpAPI error:', data.debug.serpapi_error);
+    return data.results || [];
+  } catch(e) {
+    console.warn(`SerpAPI "${query}" in ${location}: ${e.message}`);
+    return [];
+  }
+}
+
+async function collectSerpJobs(queries, locations, countries, dateRange = '3days', onProgress) {
+  // locations = cities if provided, otherwise country names
+  // countries = used for gl/hl localisation params
+  const unique = new Map();
+  let skipped = 0;
+  const total = queries.length * locations.length;
+  let done = 0;
+
+  for (const location of locations) {
+    // Find matching country params for this location
+    // Try exact country match first, then default to gb
+    const countryName = countries.find(c =>
+      location.toLowerCase().includes(c.toLowerCase().split(' ')[0].toLowerCase())
+    ) || countries[0] || 'United Kingdom';
+    const params = SERP_COUNTRY_MAP[countryName] || { gl: 'gb', hl: 'en' };
+
+    for (const query of queries) {
+      const raw = await fetchSerpJobs(query, location, params.gl, params.hl, dateRange);
+      for (const job of raw) {
+        if (!job.id || unique.has(job.id)) continue;
+        if (isExcluded(job)) { skipped++; continue; }
+        unique.set(job.id, job);
+      }
+      done++;
+      onProgress && onProgress(done, total, `[${location}] "${query}"`);
+      await sleep(500);
+    }
+  }
+  return { jobs: [...unique.values()], skipped };
+}
+
+async function scoreJobsWithGemini(jobs, resumeText, onProgress) {
+  // Process jobs 1 by 1, 2 concurrently
+  const CONCURRENCY = 2;
+  const allScored = new Array(jobs.length).fill(null);
+  let completed = 0;
+
+  async function scoreOne(job, index) {
+    const res = await fetch('/api/score-jobs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jobs: [job], resumeText }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    const scored = data.scored || [];
+    if (scored[0]) scored[0].index = index;
+    return scored[0] || null;
+  }
+
+  // Process in groups of CONCURRENCY
+  for (let i = 0; i < jobs.length; i += CONCURRENCY) {
+    const group = jobs.slice(i, i + CONCURRENCY);
+    const promises = group.map((job, offset) => scoreOne(job, i + offset));
+    const results = await Promise.all(promises);
+    results.forEach((r, offset) => { if (r) allScored[i + offset] = r; });
+    completed += group.length;
+    const pct = Math.round((completed / jobs.length) * 100);
+    onProgress && onProgress(pct, completed, jobs.length);
+    if (i + CONCURRENCY < jobs.length) await sleep(500);
+  }
+
+  return allScored.filter(Boolean);
+}
