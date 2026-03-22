@@ -808,8 +808,7 @@ nav {
 .chat-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(4,5,10,0.7);
-  backdrop-filter: blur(8px);
+  background: transparent;
   z-index: 400;
   display: flex;
   align-items: flex-end;
@@ -891,6 +890,9 @@ nav {
   align-self: flex-start;
   border-radius: 4px 12px 12px 12px;
 }
+.chat-msg.assistant p { margin-bottom: 8px; }
+.chat-msg.assistant p:last-child { margin-bottom: 0; }
+.chat-msg.assistant strong { color: var(--text); font-weight: 600; }
 .chat-msg.user {
   background: rgba(0,255,163,0.09);
   border: 1px solid rgba(0,255,163,0.2);
@@ -907,6 +909,11 @@ nav {
   font-style: italic;
   font-size: 12px;
   border-radius: 4px 12px 12px 12px;
+  animation: typingPulse 1.4s ease-in-out infinite;
+}
+@keyframes typingPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
 }
 
 .chat-modal-suggestions {
@@ -1150,7 +1157,6 @@ nav {
       <div style="display:flex;align-items:center;gap:10px;">
         <div style="width:8px;height:8px;border-radius:50%;background:var(--accent-green);box-shadow:0 0 8px var(--accent-green);"></div>
         <span class="chat-modal-title">Talent Agent</span>
-        <span class="chat-modal-model">mistral nemo</span>
       </div>
       <button class="chat-modal-close" onclick="toggleChat()">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -1244,6 +1250,7 @@ async function loadHistory() {
   if (!data?.length) return;
   const seen = new Set(), runs = [];
   for (const r of data) { const key = r.run_id || r.run_date; if (!seen.has(key)) { seen.add(key); runs.push({ run_id: key, run_date: r.run_date, created_at: r.created_at }); } }
+  runs.splice(15); // cap at 15 most recent runs
   const total = runs.length;
   const sel = document.getElementById('historySelect');
   sel.innerHTML = '<option value="">Select run…</option>' + runs.map((r, i) => `<option value="${r.run_id}">Run ${total-i} — ${formatDate(r.run_date)} ${formatTime(r.created_at)}</option>`).join('');
@@ -1598,14 +1605,20 @@ async function sendChat() {
   appendMsg(msg, 'user');
   chatHistory.push({ role: 'user', content: msg });
 
-  const thinking = appendMsg('Thinking…', 'thinking');
+  const thinking = appendMsg('Talent Agent is typing…', 'thinking');
 
   try {
-    const res = await fetch('/api/chat', {
+    // Fetch response immediately but hold it
+    const fetchPromise = fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages: chatHistory, systemPrompt: buildSystemPrompt() }),
     });
+
+    // Random typing delay 6-11 seconds
+    const typingDelay = (6 + Math.random() * 5) * 1000;
+    const [res] = await Promise.all([fetchPromise, new Promise(r => setTimeout(r, typingDelay))]);
+
     const data = await res.json();
     thinking.remove();
     if (data.error) throw new Error(data.error);
@@ -1626,11 +1639,27 @@ function sendSuggestion(btn) {
   sendChat();
 }
 
+function formatMsgText(text) {
+  // Convert **bold** to <strong>, then wrap paragraphs
+  let html = text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .split(/\n{2,}/)
+    .map(p => p.trim())
+    .filter(Boolean)
+    .map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`)
+    .join('');
+  return html;
+}
+
 function appendMsg(text, type) {
   const msgs = document.getElementById('chatMessages');
   const el = document.createElement('div');
   el.className = `chat-msg ${type}`;
-  el.textContent = text;
+  if (type === 'assistant') {
+    el.innerHTML = formatMsgText(text);
+  } else {
+    el.textContent = text;
+  }
   msgs.appendChild(el);
   msgs.scrollTop = msgs.scrollHeight;
   return el;
