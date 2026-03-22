@@ -135,7 +135,7 @@ async function collectSerpJobs(queries, locations, countries, onProgress) {
 }
 
 async function scoreJobsWithGemini(jobs, resumeText, onProgress) {
-  const BATCH_SIZE = 10;
+  const BATCH_SIZE = 25;
   const allScored  = [];
   const batches    = Math.ceil(jobs.length / BATCH_SIZE);
 
