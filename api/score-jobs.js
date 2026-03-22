@@ -33,7 +33,7 @@ ${postingsJson}
 
 ---
 
-## EVALUATION PROTOCOL — follow every step exactly, no exceptions
+## EVALUATION PROTOCOL — follow every step exactly
 
 ### STEP 1 — Language check
 If the job description is not in English: set score=0, recommendation="Skip", stop immediately.
@@ -46,43 +46,37 @@ Core requirements are ONLY those that meet at least one of:
 - Explicitly tied to daily responsibilities ("you will...", "responsible for...")
 
 Everything else is a nice-to-have. When uncertain, classify as nice-to-have.
-
 You MUST count:
 - Total core requirements identified (integer)
 - Core requirements with DIRECT matches from the resume (integer)
 - Core match % = direct matches / total core requirements
 
 ### STEP 3 — Determine direct vs adjacent match
-
 A DIRECT MATCH requires explicit evidence of hands-on implementation in a real work context.
 
-These DO NOT count as direct matches under any circumstances:
+These DO NOT count as direct matches:
+- Low-code, no-code, internal workflow tools, or workshops (e.g. Power Platform, Copilot Studio, internal dashboards)
+- Conceptual knowledge, enablement sessions, training delivery
+- Job titles or buzzwords alone without supporting hands-on evidence
+- Internal HR, team, or portfolio management unrelated to the functional domain
 - "Basic" or beginner-level skills (e.g. "Python (Basic)")
-- Low-code or no-code tools used as a substitute for engineering skills (e.g. Power Platform, Copilot Studio, Power Automate do NOT satisfy backend/software engineering requirements)
-- Conceptual knowledge, workshop delivery, training, or enablement activities
-- Using AI tools (e.g. prompting, Copilot) does NOT satisfy AI engineering requirements (RAG, MLOps, model evaluation, cloud AI infrastructure)
-- Job titles or seniority alone without supporting evidence
+- Using AI tools (prompting, Copilot) does NOT satisfy AI engineering requirements (RAG, MLOps, model evaluation, cloud AI)
 
 Adjacent skills count ONLY toward nice-to-haves, never toward core requirements.
 
-CRITICAL — avoid keyword inflation and avoid keyword blindness:
-Do NOT match based on shared buzzwords or domain labels (e.g. "AI", "agentic", "automation"). Match based on what the candidate actually DID in their roles vs what this role actually REQUIRES them to DO day-to-day.
+CRITICAL — avoid keyword inflation AND keyword blindness:
+Do NOT match based on shared buzzwords or domain labels ("AI", "agentic", "automation"). Match based on what the candidate actually DID vs what this role actually REQUIRES day-to-day.
+Ask: "Could this candidate walk into this role on day one and perform the core responsibilities?" — not "Do they use similar terminology?"
 
-Ask yourself: "Could this candidate walk into this role on day one and perform the core responsibilities?" — not "Do they use similar terminology?"
-
-A candidate who built a low-code assistant using Copilot Studio is NOT a match for a role requiring software engineering, API development, or ML infrastructure — even if both use the word "AI" or "agentic".
-
-Equally, do NOT penalise a candidate simply because the job title or industry language differs from their resume. If the functional responsibilities match — stakeholder management, project delivery, translating requirements, working with technical teams, driving adoption — that IS a strong match regardless of how the role is labelled or what sector it is in.
-
-For non-technical roles (consulting, operations, project delivery, stakeholder management, AI adoption): the following count as DIRECT matches when the job description requires them — stakeholder management, translating requirements, workflow design, project delivery, change management, driving adoption, facilitating workshops, managing workstreams, client relationship management. These are functional skills with direct evidence in the resume and should NOT be treated as adjacent.
+For non-technical roles (consulting, operations, project delivery, stakeholder management, AI adoption): the following count as DIRECT matches when the job description requires them — stakeholder management, translating requirements, workflow design, project delivery, change management, driving adoption, facilitating workshops, managing workstreams, client relationship management.
 
 ### STEP 4 — Apply hard caps
-Evaluate ALL caps below. Apply the MOST RESTRICTIVE one triggered (lowest ceiling wins).
-- No relevant experience in the role's core function → score cannot exceed 40
-- Candidate seniority 2+ levels below required → score cannot exceed 45
-- Core match % < 40% → score cannot exceed 50
-- Role requires software/backend engineering, cloud infrastructure, or data engineering, and candidate has no direct evidence → score cannot exceed 55
-- Core match % < 60% → score cannot exceed 60
+Evaluate ALL caps. Apply the MOST RESTRICTIVE one triggered (lowest ceiling wins):
+- No relevant experience in the role's core function → max score 40
+- Candidate seniority 2+ levels below role → max score 45
+- Core match % < 40% → max score 50
+- Role requires software/backend engineering, cloud infrastructure, or data engineering, and candidate has no direct evidence → max score 55
+- Core match % < 60% → max score 60
 
 ### STEP 5 — Base scoring
 Starting from 100, work downward:
@@ -93,28 +87,26 @@ Starting from 100, work downward:
 
 ### STEP 6 — Apply penalties (MANDATORY — do not skip)
 You MUST apply a penalty for every missing core requirement. Do not reinterpret gaps as partial matches.
-- Each missing core requirement: -10 to -20 depending on how central it is
+- Each missing core requirement: -10 (secondary) or -20 (critical)
 - Total penalties for missing core requirements: capped at -40
 - Overqualified by 2+ levels: -10
 
 ### STEP 7 — Sanity check (MANDATORY)
-Before finalising any score above 75, verify both conditions are true:
+Before finalising any score above 75, verify BOTH:
 1. Candidate directly meets at least 70% of core requirements
 2. No major technical gaps exist in skills central to the role
+If either fails, score MUST be reduced below 75.
 
-If either condition fails, the score MUST be reduced below 75.
-
-Before finalising any score above 85, verify:
+Before finalising any score above 85, verify BOTH:
 1. Candidate directly meets nearly ALL core requirements
 2. No gaps exist in any skills central to the role
+If either fails, score MUST be reduced below 85.
 
-If either condition fails, the score MUST be reduced below 85.
-
-A score of 90+ should be exceptional and rare. If you are assigning 90+, you must be certain the candidate is outstanding for this specific role.
+A score of 90+ should be exceptional and rare.
 
 ### STEP 8 — Recommendation
-- "Apply" = score >= 70 AND core match % >= 60% AND no missing critical core requirements
-- "Maybe" = score 45-69 OR core match % 40-59% OR 1-2 addressable gaps
+- "Apply" = score ≥ 70 AND core match % ≥ 60% AND no missing critical core requirements
+- "Maybe" = score 45–69 OR core match % 40–59% OR 1–2 addressable gaps
 - "Skip" = score < 45 OR core match % < 40% OR fundamental skill mismatch
 
 ---
