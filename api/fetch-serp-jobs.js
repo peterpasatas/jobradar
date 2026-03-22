@@ -18,13 +18,15 @@ export default async function handler(req, res) {
     }
 
     // Build SerpAPI URL
-    // chips=date_posted:today filters to jobs posted in the last 24 hours
+    // Embed location in query for strict city filtering — location param alone is just a bias
+    const strictQuery = `${query} ${location}`;
     const url = new URL('https://serpapi.com/search');
     url.searchParams.set('engine',   'google_jobs');
-    url.searchParams.set('q', query);
+    url.searchParams.set('q',        strictQuery);
     url.searchParams.set('location', location);
     url.searchParams.set('gl',       gl);
     url.searchParams.set('hl',       hl);
+    url.searchParams.set('ltype',    'l');  // strict location filtering
     url.searchParams.set('chips',    'date_posted:3days,employment_type:FULLTIME');
     url.searchParams.set('api_key',  process.env.SERPAPI_KEY);
 
