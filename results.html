@@ -738,6 +738,116 @@ nav {
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ── CHAT PANEL ─────────────────────────────────── */
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+.chat-header {
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+}
+.chat-title { font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-2); }
+.chat-model { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-3); }
+
+.chat-messages {
+  flex: 1; overflow-y: auto;
+  padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.chat-messages::-webkit-scrollbar { width: 3px; }
+.chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.chat-bubble {
+  font-size: 12px; line-height: 1.6;
+  padding: 10px 13px;
+  border-radius: 10px;
+  max-width: 90%;
+  animation: bubbleIn 0.2s ease;
+}
+@keyframes bubbleIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+.chat-bubble.assistant {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  align-self: flex-start;
+  border-radius: 4px 10px 10px 10px;
+}
+.chat-bubble.user {
+  background: rgba(0,255,163,0.08);
+  border: 1px solid rgba(0,255,163,0.2);
+  color: var(--text);
+  align-self: flex-end;
+  border-radius: 10px 4px 10px 10px;
+  font-weight: 500;
+}
+.chat-bubble.thinking {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  color: var(--text-3);
+  align-self: flex-start;
+  font-style: italic;
+  font-size: 11px;
+}
+
+.chat-suggestions {
+  padding: 0 14px 8px;
+  display: flex; flex-direction: column; gap: 5px;
+  flex-shrink: 0;
+}
+.suggestion-chip {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text-3);
+  font-family: 'Figtree', sans-serif;
+  font-size: 11px;
+  padding: 6px 10px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+.suggestion-chip:hover { border-color: rgba(0,255,163,0.3); color: var(--accent-green); background: rgba(0,255,163,0.04); }
+
+.chat-input-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.chat-input {
+  flex: 1;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: 'Figtree', sans-serif;
+  font-size: 12px;
+  padding: 8px 12px;
+  outline: none;
+  transition: border-color 0.18s;
+}
+.chat-input:focus { border-color: rgba(0,255,163,0.35); }
+.chat-input::placeholder { color: var(--text-3); }
+.chat-send {
+  width: 32px; height: 32px;
+  background: var(--accent-green);
+  border: none; border-radius: 7px;
+  color: #04050a;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.18s;
+}
+.chat-send:hover { filter: brightness(1.1); box-shadow: 0 0 12px rgba(0,255,163,0.3); }
+.chat-send:disabled { opacity: 0.35; cursor: not-allowed; }
 </style>
 </head>
 <body>
@@ -879,8 +989,10 @@ nav {
     </div>
   </div>
 
-  <!-- TERMINAL -->
+  <!-- RIGHT PANEL: terminal (3 lines) + chat -->
   <div class="terminal">
+
+    <!-- Terminal — last 3 lines only -->
     <div class="term-header">
       <div class="term-dots">
         <div class="term-dot td-red"></div>
@@ -897,7 +1009,41 @@ nav {
       <div class="prog-bar-wrap"><div class="prog-bar" id="progressBar"></div></div>
       <div class="prog-label" id="progressLabel">—</div>
     </div>
-    <div class="term-log" id="progressLog"></div>
+    <div class="term-log" id="progressLog" style="max-height:66px;overflow:hidden;"></div>
+
+    <!-- Divider -->
+    <div style="height:1px;background:rgba(255,255,255,0.07);flex-shrink:0;"></div>
+
+    <!-- Chat panel -->
+    <div class="chat-panel">
+      <div class="chat-header">
+        <div style="display:flex;align-items:center;gap:7px;">
+          <div style="width:7px;height:7px;border-radius:50%;background:var(--accent-green);box-shadow:0 0 6px var(--accent-green);"></div>
+          <span class="chat-title">Career Assistant</span>
+        </div>
+        <span class="chat-model">mistral nemo</span>
+      </div>
+
+      <div class="chat-messages" id="chatMessages">
+        <div class="chat-bubble assistant">
+          Run a search first, then ask me anything about your results — which roles to prioritise, what skills you're missing, how to position yourself for specific jobs.
+        </div>
+      </div>
+
+      <div class="chat-suggestions" id="chatSuggestions" style="display:none;">
+        <button class="suggestion-chip" onclick="sendSuggestion(this)">Which role should I apply to first?</button>
+        <button class="suggestion-chip" onclick="sendSuggestion(this)">What skills am I missing most?</button>
+        <button class="suggestion-chip" onclick="sendSuggestion(this)">Summarise my Apply matches</button>
+      </div>
+
+      <div class="chat-input-row">
+        <input class="chat-input" id="chatInput" placeholder="Ask about your results…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}">
+        <button class="chat-send" id="chatSendBtn" onclick="sendChat()">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 7h12M7 1l6 6-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </div>
+
   </div>
 
 </div>
@@ -980,6 +1126,7 @@ async function loadHistoricRun(runId) {
   allResults = data.map(r => ({...r, skills_arr: r.extracted_skills || []}));
   renderStats(allResults); renderCards(allResults);
   document.getElementById('resultsHeader').style.display = 'flex';
+  activateChat();
 }
 
 async function runSearch() {
@@ -1052,6 +1199,7 @@ async function runSearch() {
 
     renderStats(rows); renderCards(rows);
     document.getElementById('resultsHeader').style.display = 'flex';
+    activateChat();
     await loadHistory();
 
   } catch(e) { addLog(`Error: ${e.message}`, 'err'); console.error(e); }
@@ -1262,6 +1410,98 @@ function resetBtn() {
 
 function formatDate(d) { return new Date(d+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}); }
 function formatTime(ts) { if (!ts) return ''; return new Date(ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); }
+
+// ── CHAT ────────────────────────────────────────
+let chatHistory = [];
+
+function buildSystemPrompt() {
+  // Only include Apply and Maybe results
+  const relevant = allResults.filter(r => r.recommendation === 'Apply' || r.recommendation === 'Maybe');
+  if (!relevant.length) return 'You are a career assistant. No job results are loaded yet — ask the user to run a search first.';
+  const jobSummaries = relevant.map(r =>
+    `- ${r.title} at ${r.company} (${r.location}) — Score: ${r.relevance_score}, ${r.recommendation}. ${r.summary || ''}`
+  ).join('
+');
+  return `You are a sharp, direct career advisor embedded in JobRadar — an AI-powered job matching tool. You have access to the user's current search results (Apply and Maybe recommendations only).
+
+CURRENT JOB RESULTS:
+${jobSummaries}
+
+Your role:
+- Help the user decide which roles to prioritise
+- Highlight skill gaps they should address
+- Give honest, concise advice — no waffle
+- Keep responses short: 2-4 sentences max unless the user asks for detail
+- Never repeat the job list back verbatim — synthesise and advise`;
+}
+
+function buildChatContext() {
+  const relevant = allResults.filter(r => r.recommendation === 'Apply' || r.recommendation === 'Maybe');
+  return relevant.length > 0;
+}
+
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+
+  input.value = '';
+  document.getElementById('chatSendBtn').disabled = true;
+  document.getElementById('chatSuggestions').style.display = 'none';
+
+  appendBubble(msg, 'user');
+  chatHistory.push({ role: 'user', content: msg });
+
+  const thinking = appendBubble('Thinking…', 'thinking');
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: chatHistory,
+        systemPrompt: buildSystemPrompt(),
+      }),
+    });
+    const data = await res.json();
+    thinking.remove();
+
+    if (data.error) throw new Error(data.error);
+
+    const reply = data.reply || 'No response.';
+    appendBubble(reply, 'assistant');
+    chatHistory.push({ role: 'assistant', content: reply });
+
+  } catch(e) {
+    thinking.remove();
+    appendBubble(`Error: ${e.message}`, 'assistant');
+  }
+
+  document.getElementById('chatSendBtn').disabled = false;
+  input.focus();
+}
+
+function sendSuggestion(btn) {
+  document.getElementById('chatInput').value = btn.textContent;
+  sendChat();
+}
+
+function appendBubble(text, type) {
+  const msgs = document.getElementById('chatMessages');
+  const el = document.createElement('div');
+  el.className = `chat-bubble ${type}`;
+  el.textContent = text;
+  msgs.appendChild(el);
+  msgs.scrollTop = msgs.scrollHeight;
+  return el;
+}
+
+// Show suggestions after results load
+function activateChat() {
+  if (buildChatContext()) {
+    document.getElementById('chatSuggestions').style.display = 'flex';
+  }
+}
 </script>
 </body>
 </html>
