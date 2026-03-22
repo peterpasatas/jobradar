@@ -23,72 +23,92 @@ export default async function handler(req, res) {
       location: j.location, description: j.description,
     })), null, 2);
 
-    const prompt = `You are a strict hiring evaluator. Your job is to assess whether a candidate would realistically pass an initial recruiter screen for each role.
+    const prompt = `You are a hiring evaluator acting as a senior recruiter. Your role is to apply strict, evidence-based screening — not to be encouraging or optimistic.
 
 ## CANDIDATE RESUME
-${resumeText.slice(0, 4500)}
+${resumeText.slice(0, 3500)}
 
 ## JOB POSTINGS
 ${postingsJson}
 
-## HOW TO EVALUATE
+---
 
-### Step 1 — Identify what the role actually requires
+## EVALUATION PROTOCOL — follow every step exactly, no exceptions
 
-Core requirements MUST meet at least one of these criteria:
-- Listed under a heading like "Requirements", "Must-have", "Essential", "You will need", or equivalent
-- Repeated multiple times across the job description
-- Explicitly tied to day-to-day responsibilities ("you will...", "responsible for...")
-- Stated with language like "required", "must have", "essential", "proven experience in"
+### STEP 1 — Language check
+If the job description is not in English: set score=0, recommendation="Skip", stop immediately.
 
-Nice-to-haves are everything else — "desirable", "preferred", "bonus", "advantageous", or mentioned only once in passing.
+### STEP 2 — Extract core requirements
+Core requirements are ONLY those that meet at least one of:
+- Listed under "Requirements", "Must-have", "Essential", "You will need", or equivalent heading
+- Stated with "required", "must have", "essential", "proven experience in"
+- Repeated 2+ times across the description
+- Explicitly tied to daily responsibilities ("you will...", "responsible for...")
 
-When in doubt, classify as nice-to-have, not core. Only mark something as core if you can point to clear evidence in the text.
+Everything else is a nice-to-have. When uncertain, classify as nice-to-have.
 
-### Step 2 — Honestly assess the candidate against those requirements
+You MUST count:
+- Total core requirements identified (integer)
+- Core requirements with DIRECT matches from the resume (integer)
+- Core match % = direct matches / total core requirements
 
-- Direct match: candidate has demonstrably done this before — evidence in resume
-- Adjacent match: candidate has done something meaningfully similar but not identical
-- Gap: candidate has no relevant evidence
+### STEP 3 — Determine direct vs adjacent match
 
-IMPORTANT: Adjacent or transferable skills ONLY compensate for missing nice-to-haves. They do NOT compensate for missing core requirements. If a role requires a specific skill and the candidate has never done it, that is a gap — even if they work in a related field.
+A DIRECT MATCH requires explicit evidence of hands-on implementation in a real work context.
 
-For unconventional or career-switching candidates: focus on demonstrated outcomes and transferable responsibilities, not job titles or industry labels.
+These DO NOT count as direct matches under any circumstances:
+- "Basic" or beginner-level skills (e.g. "Python (Basic)")
+- Low-code or no-code tools used as a substitute for engineering skills (e.g. Power Platform, Copilot Studio, Power Automate do NOT satisfy backend/software engineering requirements)
+- Conceptual knowledge, workshop delivery, training, or enablement activities
+- Using AI tools (e.g. prompting, Copilot) does NOT satisfy AI engineering requirements (RAG, MLOps, model evaluation, cloud AI infrastructure)
+- Job titles or seniority alone without supporting evidence
 
-### Step 3 — Score
-- Skills match (40pts): % of core requirements directly met × 30pts, plus up to 10pts for nice-to-haves met
-- Experience level (25pts): full if meets/exceeds required years, scaled down if below
-- Role alignment (20pts): how closely the candidate's past roles match this role's function
-- Domain fit (15pts): industry/sector match
+Adjacent skills count ONLY toward nice-to-haves, never toward core requirements.
 
-HARD CAPS (apply before penalties):
-- Job description is not in English → score 0, recommendation "Skip", stop evaluation
-- Under 40% of core requirements directly met → max score 50
-- Candidate seniority 2+ levels below role → max score 45
-- No relevant experience in the role's core function → max score 40
+### STEP 4 — Apply hard caps (apply ALL that are triggered)
+- Core match % < 40% → score cannot exceed 50
+- Core match % < 60% → score cannot exceed 60
+- Candidate seniority 2+ levels below required → score cannot exceed 45
+- Role requires software/backend engineering, cloud infrastructure, or data engineering, and candidate has no direct evidence → score cannot exceed 55
+- No relevant experience in the role's core function → score cannot exceed 40
 
-PENALTIES (subtract after scoring and caps):
-- Each missing core requirement → -10 to -20 depending on centrality
-- Overqualified by 2+ levels → -10
-- IMPORTANT: Total penalties for missing core requirements must not exceed -40. Do not stack penalties beyond this — the hard caps already handle severe mismatches.
+### STEP 5 — Base scoring
+Starting from 100, work downward:
+- Skills match (max 40pts): (core match % × 30) + up to 10pts for nice-to-haves
+- Experience level (max 25pts): full if meets/exceeds required years, pro-rated if below
+- Role alignment (max 20pts): same function=20, adjacent=10, different=5
+- Domain fit (max 15pts): same industry=15, adjacent=8, unrelated=3
 
-### Step 4 — Calibrate
-- 90-100: Exceptional fit — candidate directly meets nearly all core requirements
-- 85 - 89: Stronger fit - meets core requirements, very minor gaps only.
-- 70-84: Strong fit — meets most core requirements, minor gaps only
-- 55-69: Plausible — meets some core requirements, notable gaps
-- 40-54: Long shot — significant gaps in core requirements
-- Below 40: Poor fit — fundamental mismatch
+### STEP 6 — Apply penalties (MANDATORY — do not skip)
+You MUST apply a penalty for every missing core requirement. Do not reinterpret gaps as partial matches.
+- Each missing core requirement: -10 to -20 depending on how central it is
+- Total penalties for missing core requirements: capped at -40
+- Overqualified by 2+ levels: -10
 
-Be conservative and honest. Do not inflate scores because the candidate works in a broadly related field. A score above 80 should be rare and well-justified.
+### STEP 7 — Sanity check (MANDATORY)
+Before finalising any score above 75, verify both conditions are true:
+1. Candidate directly meets at least 70% of core requirements
+2. No major technical gaps exist in skills central to the role
 
-RECOMMENDATION:
-- "Apply" = score >= 88 and no missing core requirements
-- "Maybe" = score 45-87 or 1-2 gaps that could be addressed at interview
-- "Skip" = score < 45 or multiple missing core requirements
+If either condition fails, the score MUST be reduced below 75.
+
+Before finalising any score above 85, verify:
+1. Candidate directly meets nearly ALL core requirements
+2. No gaps exist in any skills central to the role
+
+If either condition fails, the score MUST be reduced below 85.
+
+A score of 90+ should be exceptional and rare. If you are assigning 90+, you must be certain the candidate is outstanding for this specific role.
+
+### STEP 8 — Recommendation
+- "Apply" = score >= 70 AND core match % >= 60% AND no missing critical core requirements
+- "Maybe" = score 45-69 OR core match % 40-59% OR 1-2 addressable gaps
+- "Skip" = score < 45 OR core match % < 40% OR fundamental skill mismatch
+
+---
 
 ## OUTPUT
-Return ONLY a JSON array with exactly ${jobs.length} objects, no markdown, no explanation:
+Return ONLY a valid JSON array with exactly ${jobs.length} objects. No markdown, no explanation:
 [{"index":integer,"extracted_title":string,"skills":string[],"experience_years":integer,"summary":"1-2 sentences","relevance_score":integer,"recommendation":"Apply"|"Maybe"|"Skip"}]
 
 Evaluate all ${jobs.length} jobs now.`;
