@@ -395,7 +395,7 @@
     document.getElementById('runBtn').disabled = true;
     document.getElementById('btnSpinner').classList.add('visible');
     document.getElementById('btnLabel').textContent = 'Running…';
-    setProgress(0, 'Fetching jobs from Adzuna…');
+    setProgress(0, source === 'serp' ? 'Fetching jobs from Google Jobs…' : 'Fetching jobs from Adzuna…');
 
     try {
       // Step 1: Collect jobs from selected source
