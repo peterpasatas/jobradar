@@ -1528,7 +1528,7 @@ function updateScoringLine(id, pct, done, total) {
   const filled = Math.floor(pct / 5);
   const bar = '█'.repeat(filled) + '░'.repeat(20 - filled);
   const ts = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  line.innerHTML = `<span class="log-t">${ts}</span>&nbsp;&nbsp;<span class="log-info">scoring &nbsp;${bar}&nbsp; ${String(pct).padStart(3,' ')}% &nbsp;(${done}/${total})</span>`;
+  line.innerHTML = `<span class="log-t">${ts}</span>&nbsp;&nbsp;<span class="log-info">${bar}&nbsp; ${String(pct).padStart(3,' ')}% &nbsp;(${done}/${total})</span>`;
   // scoring line updates in place — no need to trim
 }
 
@@ -1538,7 +1538,7 @@ function finaliseScoringLine(id, count) {
     const bar = '█'.repeat(20);
     const ts2 = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
     const fullBar = '█'.repeat(20);
-    line.innerHTML = `<span class="log-t">${ts2}</span>&nbsp;&nbsp;<span class="log-ok">scoring &nbsp;${fullBar}&nbsp; 100% &nbsp;(${count}/${count}) ✓</span>`;
+    line.innerHTML = `<span class="log-t">${ts2}</span>&nbsp;&nbsp;<span class="log-ok">${fullBar}&nbsp; 100% &nbsp;(${count}/${count}) ✓</span>`;
   }
 }
 
