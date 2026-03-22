@@ -719,13 +719,14 @@ nav {
 }
 
 .term-log {
-  flex: 1; overflow-y: auto;
-  padding: 8px 16px;
+  /* Fixed 3 lines only — overflow hidden clips the rest */
+  flex-shrink: 0;
+  height: 58px;
+  overflow: hidden;
+  padding: 4px 16px 6px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px; line-height: 1.7;
 }
-.term-log::-webkit-scrollbar { width: 3px; }
-.term-log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
 .log-row { display: flex; gap: 8px; align-items: flex-start; }
 .log-t  { color: var(--text-3); flex-shrink: 0; }
@@ -746,6 +747,7 @@ nav {
   flex: 1;
   overflow: hidden;
   min-height: 0;
+  /* Takes all remaining space after terminal header + progress + 3-line log */
 }
 .chat-header {
   padding: 10px 14px 8px;
@@ -799,7 +801,7 @@ nav {
 
 .chat-suggestions {
   padding: 0 14px 8px;
-  display: flex; flex-direction: column; gap: 5px;
+  flex-direction: column; gap: 5px;
   flex-shrink: 0;
 }
 .suggestion-chip {
@@ -1009,7 +1011,7 @@ nav {
       <div class="prog-bar-wrap"><div class="prog-bar" id="progressBar"></div></div>
       <div class="prog-label" id="progressLabel">—</div>
     </div>
-    <div class="term-log" id="progressLog" style="max-height:66px;overflow:hidden;"></div>
+    <div class="term-log" id="progressLog"></div>
 
     <!-- Divider -->
     <div style="height:1px;background:rgba(255,255,255,0.07);flex-shrink:0;"></div>
@@ -1369,9 +1371,10 @@ function addLog(msg, type = 'info') {
   const row = document.createElement('div');
   row.className = 'log-row';
   const ts = new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  row.innerHTML = `<span class="log-t">${ts}</span><span class="log-${type}">${msg}</span>`;
+  row.innerHTML = `<span class="log-t">${ts}</span>&nbsp;<span class="log-${type}">${msg}</span>`;
   log.appendChild(row);
-  log.scrollTop = log.scrollHeight;
+  // Keep only last 3 lines
+  while (log.children.length > 3) log.removeChild(log.firstChild);
 }
 
 function updateScoringLine(id, pct, done, total) {
@@ -1387,7 +1390,7 @@ function updateScoringLine(id, pct, done, total) {
   const bar = '█'.repeat(filled) + '░'.repeat(20 - filled);
   const ts = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
   line.innerHTML = `<span class="log-t">${ts}</span>&nbsp;&nbsp;<span class="log-info">scoring &nbsp;${bar}&nbsp; ${String(pct).padStart(3,' ')}% &nbsp;(${done}/${total})</span>`;
-  log.scrollTop = log.scrollHeight;
+  // scoring line updates in place — no need to trim
 }
 
 function finaliseScoringLine(id, count) {
@@ -1500,6 +1503,7 @@ function appendBubble(text, type) {
 function activateChat() {
   if (buildChatContext()) {
     document.getElementById('chatSuggestions').style.display = 'flex';
+    document.getElementById('chatSuggestions').style.flexDirection = 'column';
   }
 }
 </script>
