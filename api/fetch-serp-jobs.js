@@ -48,20 +48,10 @@ export default async function handler(req, res) {
 
     const allJobs = (data.jobs_results || []).map(job => normaliseJob(job));
 
-    // Filter to LinkedIn results only — via field contains "LinkedIn"
-    const linkedInJobs = allJobs.filter(job =>
-      (job.via || '').toLowerCase().includes('linkedin')
-    );
-
-    // Filter by location — only keep jobs whose location contains the searched city
-    // This prevents Google returning Leeds/Birmingham when searching London
-    const cityLower = location.split(',')[0].trim().toLowerCase();
-    const jobs = linkedInJobs.filter(job => {
-      const jobLoc = (job.location || '').toLowerCase();
-      return jobLoc.includes(cityLower) || jobLoc.includes('remote') || jobLoc.includes('united kingdom') || jobLoc === '';
-    });
-
-    console.log(`Total: ${allJobs.length}, LinkedIn: ${linkedInJobs.length}, City-filtered: ${jobs.length}`);
+    // No platform or location filtering — return all results
+    // Filtering is handled in the UI by the user
+    const jobs = allJobs;
+    console.log(`Total jobs returned: ${jobs.length}`);
 
     return res.status(200).json({
       results: jobs,
