@@ -719,13 +719,14 @@ nav {
 }
 
 .term-log {
-  height: 60px;
-  flex-shrink: 0;
-  overflow: hidden;
-  padding: 4px 16px 6px;
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 16px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px; line-height: 1.7;
 }
+.term-log::-webkit-scrollbar { width: 3px; }
+.term-log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
 .log-row { display: flex; gap: 8px; align-items: flex-start; }
 .log-t  { color: var(--text-3); flex-shrink: 0; }
@@ -739,115 +740,230 @@ nav {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-/* ── CHAT PANEL ─────────────────────────────────── */
-.chat-panel {
+/* ── FLOATING CHAT BUBBLE ───────────────────────── */
+.chat-bubble-btn {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.bubble-icon {
+  width: 52px; height: 52px;
+  background: var(--accent-green);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #04050a;
+  box-shadow: 0 4px 20px rgba(0,255,163,0.4);
+  transition: all 0.2s ease;
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
+.chat-bubble-btn:hover .bubble-icon {
+  transform: scale(1.08);
+  box-shadow: 0 6px 28px rgba(0,255,163,0.55);
+}
+
+.bubble-pulse {
+  position: absolute;
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  opacity: 0;
+  animation: bubble-ripple 2.5s ease-out infinite;
+}
+.bubble-pulse.active { opacity: 1; }
+@keyframes bubble-ripple {
+  0%   { transform: scale(1); opacity: 0.4; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+.bubble-label {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  white-space: nowrap;
+  backdrop-filter: blur(20px);
+  transition: all 0.2s ease;
+  opacity: 0;
+  transform: translateX(8px);
+  pointer-events: none;
+}
+.chat-bubble-btn:hover .bubble-label {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* ── CHAT OVERLAY MODAL ─────────────────────────── */
+.chat-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(4,5,10,0.7);
+  backdrop-filter: blur(8px);
+  z-index: 400;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 20px 28px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.chat-overlay.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.chat-modal {
+  width: 480px;
+  height: 600px;
+  max-height: calc(100vh - 120px);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
   display: flex;
   flex-direction: column;
-  flex: 1;
   overflow: hidden;
-  min-height: 0;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(0,255,163,0.08);
+  transform: translateY(20px) scale(0.97);
+  transition: transform 0.25s ease;
 }
-.chat-header {
-  padding: 10px 14px 8px;
+.chat-overlay.open .chat-modal {
+  transform: translateY(0) scale(1);
+}
+
+.chat-modal-header {
+  padding: 16px 18px 14px;
   border-bottom: 1px solid var(--border);
   display: flex; align-items: center; justify-content: space-between;
   flex-shrink: 0;
 }
-.chat-title { font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-2); }
-.chat-model { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-3); }
+.chat-modal-title {
+  font-size: 13px; font-weight: 700;
+  letter-spacing: -0.2px;
+  color: var(--text);
+}
+.chat-modal-model {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--text-3);
+  margin-left: 8px;
+}
+.chat-modal-close {
+  background: none; border: none;
+  color: var(--text-3); cursor: pointer;
+  padding: 4px; border-radius: 6px;
+  transition: all 0.18s;
+  display: flex; align-items: center; justify-content: center;
+}
+.chat-modal-close:hover { color: var(--text); background: rgba(255,255,255,0.08); }
 
-.chat-messages {
+.chat-modal-messages {
   flex: 1; overflow-y: auto;
-  padding: 12px 14px;
-  display: flex; flex-direction: column; gap: 10px;
+  padding: 16px 18px;
+  display: flex; flex-direction: column; gap: 12px;
 }
-.chat-messages::-webkit-scrollbar { width: 3px; }
-.chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.chat-modal-messages::-webkit-scrollbar { width: 3px; }
+.chat-modal-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-.chat-bubble {
-  font-size: 12px; line-height: 1.6;
-  padding: 10px 13px;
-  border-radius: 10px;
-  max-width: 90%;
-  animation: bubbleIn 0.2s ease;
+.chat-msg {
+  font-size: 13px; line-height: 1.6;
+  padding: 11px 14px;
+  border-radius: 12px;
+  max-width: 88%;
+  animation: msgIn 0.2s ease;
 }
-@keyframes bubbleIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes msgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
-.chat-bubble.assistant {
+.chat-msg.assistant {
   background: rgba(255,255,255,0.05);
   border: 1px solid var(--border);
   color: var(--text-2);
   align-self: flex-start;
-  border-radius: 4px 10px 10px 10px;
+  border-radius: 4px 12px 12px 12px;
 }
-.chat-bubble.user {
-  background: rgba(0,255,163,0.08);
+.chat-msg.user {
+  background: rgba(0,255,163,0.09);
   border: 1px solid rgba(0,255,163,0.2);
   color: var(--text);
   align-self: flex-end;
-  border-radius: 10px 4px 10px 10px;
+  border-radius: 12px 4px 12px 12px;
   font-weight: 500;
 }
-.chat-bubble.thinking {
+.chat-msg.thinking {
   background: rgba(255,255,255,0.03);
   border: 1px solid var(--border);
   color: var(--text-3);
   align-self: flex-start;
   font-style: italic;
-  font-size: 11px;
+  font-size: 12px;
+  border-radius: 4px 12px 12px 12px;
 }
 
-.chat-suggestions {
-  padding: 0 14px 8px;
-  flex-direction: column; gap: 5px;
+.chat-modal-suggestions {
+  padding: 0 18px 10px;
+  display: flex; flex-direction: column; gap: 6px;
   flex-shrink: 0;
 }
 .suggestion-chip {
   background: rgba(255,255,255,0.03);
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: 8px;
   color: var(--text-3);
   font-family: 'Figtree', sans-serif;
-  font-size: 11px;
-  padding: 6px 10px;
+  font-size: 12px;
+  padding: 8px 12px;
   text-align: left;
   cursor: pointer;
   transition: all 0.18s;
 }
-.suggestion-chip:hover { border-color: rgba(0,255,163,0.3); color: var(--accent-green); background: rgba(0,255,163,0.04); }
+.suggestion-chip:hover {
+  border-color: rgba(0,255,163,0.3);
+  color: var(--accent-green);
+  background: rgba(0,255,163,0.04);
+}
 
-.chat-input-row {
-  display: flex; align-items: center; gap: 6px;
-  padding: 10px 14px;
+.chat-modal-input-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 18px;
   border-top: 1px solid var(--border);
   flex-shrink: 0;
 }
-.chat-input {
+.chat-modal-input {
   flex: 1;
-  background: rgba(255,255,255,0.04);
+  background: rgba(255,255,255,0.05);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   color: var(--text);
   font-family: 'Figtree', sans-serif;
-  font-size: 12px;
-  padding: 8px 12px;
+  font-size: 13px;
+  padding: 10px 14px;
   outline: none;
   transition: border-color 0.18s;
 }
-.chat-input:focus { border-color: rgba(0,255,163,0.35); }
-.chat-input::placeholder { color: var(--text-3); }
-.chat-send {
-  width: 32px; height: 32px;
+.chat-modal-input:focus { border-color: rgba(0,255,163,0.4); }
+.chat-modal-input::placeholder { color: var(--text-3); }
+.chat-modal-send {
+  width: 36px; height: 36px;
   background: var(--accent-green);
-  border: none; border-radius: 7px;
+  border: none; border-radius: 9px;
   color: #04050a;
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
+  cursor: pointer; flex-shrink: 0;
   transition: all 0.18s;
 }
-.chat-send:hover { filter: brightness(1.1); box-shadow: 0 0 12px rgba(0,255,163,0.3); }
-.chat-send:disabled { opacity: 0.35; cursor: not-allowed; }
+.chat-modal-send:hover { filter: brightness(1.1); box-shadow: 0 0 14px rgba(0,255,163,0.35); }
+.chat-modal-send:disabled { opacity: 0.35; cursor: not-allowed; }
+
+
 </style>
 </head>
 <body>
@@ -1011,41 +1127,55 @@ nav {
     </div>
     <div class="term-log" id="progressLog"></div>
 
-    <!-- Divider -->
-    <div style="height:1px;background:rgba(255,255,255,0.07);flex-shrink:0;"></div>
+  </div>
 
-    <!-- Chat panel -->
-    <div class="chat-panel">
-      <div class="chat-header">
-        <div style="display:flex;align-items:center;gap:7px;">
-          <div style="width:7px;height:7px;border-radius:50%;background:var(--accent-green);box-shadow:0 0 6px var(--accent-green);"></div>
-          <span class="chat-title">Career Assistant</span>
-        </div>
-        <span class="chat-model">mistral nemo</span>
+</div>
+
+<!-- FLOATING CHAT BUBBLE -->
+<div class="chat-bubble-btn" id="chatBubbleBtn" onclick="toggleChat()">
+  <div class="bubble-icon" id="bubbleIcon">
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+      <path d="M11 2C6.03 2 2 5.8 2 10.5c0 2.1.8 4 2.1 5.5L3 20l4.3-1.4C8.4 19.5 9.7 20 11 20c4.97 0 9-3.8 9-8.5S15.97 2 11 2z" fill="currentColor"/>
+    </svg>
+  </div>
+  <div class="bubble-pulse" id="bubblePulse"></div>
+  <div class="bubble-label" id="bubbleLabel">Career Assistant</div>
+</div>
+
+<!-- CHAT OVERLAY MODAL -->
+<div class="chat-overlay" id="chatOverlay" onclick="closeChatOnBackdrop(event)">
+  <div class="chat-modal" id="chatModal">
+    <div class="chat-modal-header">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:8px;height:8px;border-radius:50%;background:var(--accent-green);box-shadow:0 0 8px var(--accent-green);"></div>
+        <span class="chat-modal-title">Career Assistant</span>
+        <span class="chat-modal-model">mistral nemo</span>
       </div>
+      <button class="chat-modal-close" onclick="toggleChat()">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+    </div>
 
-      <div class="chat-messages" id="chatMessages">
-        <div class="chat-bubble assistant">
-          Run a search first, then ask me anything about your results — which roles to prioritise, what skills you're missing, how to position yourself for specific jobs.
-        </div>
-      </div>
-
-      <div class="chat-suggestions" id="chatSuggestions" style="display:none;">
-        <button class="suggestion-chip" onclick="sendSuggestion(this)">Which role should I apply to first?</button>
-        <button class="suggestion-chip" onclick="sendSuggestion(this)">What skills am I missing most?</button>
-        <button class="suggestion-chip" onclick="sendSuggestion(this)">Summarise my Apply matches</button>
-      </div>
-
-      <div class="chat-input-row">
-        <input class="chat-input" id="chatInput" placeholder="Ask about your results…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}">
-        <button class="chat-send" id="chatSendBtn" onclick="sendChat()">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 7h12M7 1l6 6-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
+    <div class="chat-modal-messages" id="chatMessages">
+      <div class="chat-msg assistant">
+        Run a search first, then ask me anything about your results — which roles to prioritise, what skills you're missing, how to position yourself for specific jobs.
       </div>
     </div>
 
-  </div>
+    <div class="chat-modal-suggestions" id="chatSuggestions" style="display:none;">
+      <button class="suggestion-chip" onclick="sendSuggestion(this)">Which role should I apply to first?</button>
+      <button class="suggestion-chip" onclick="sendSuggestion(this)">What skills am I missing most?</button>
+      <button class="suggestion-chip" onclick="sendSuggestion(this)">Summarise my Apply matches</button>
+    </div>
 
+    <div class="chat-modal-input-row">
+      <input class="chat-modal-input" id="chatInput" placeholder="Ask about your results…"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}">
+      <button class="chat-modal-send" id="chatSendBtn" onclick="sendChat()">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 7h12M7 1l6 6-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -1417,9 +1547,22 @@ function formatTime(ts) { if (!ts) return ''; return new Date(ts).toLocaleTimeSt
 
 // ── CHAT ────────────────────────────────────────
 let chatHistory = [];
+let chatOpen = false;
+
+function toggleChat() {
+  chatOpen = !chatOpen;
+  document.getElementById('chatOverlay').classList.toggle('open', chatOpen);
+  if (chatOpen) {
+    document.getElementById('chatInput').focus();
+    document.getElementById('bubblePulse').classList.remove('active');
+  }
+}
+
+function closeChatOnBackdrop(e) {
+  if (e.target === document.getElementById('chatOverlay')) toggleChat();
+}
 
 function buildSystemPrompt() {
-  // Only include Apply and Maybe results
   const relevant = allResults.filter(r => r.recommendation === 'Apply' || r.recommendation === 'Maybe');
   if (!relevant.length) return 'You are a career assistant. No job results are loaded yet — ask the user to run a search first.';
   const jobSummaries = relevant.map(r =>
@@ -1439,8 +1582,7 @@ Your role:
 }
 
 function buildChatContext() {
-  const relevant = allResults.filter(r => r.recommendation === 'Apply' || r.recommendation === 'Maybe');
-  return relevant.length > 0;
+  return allResults.filter(r => r.recommendation === 'Apply' || r.recommendation === 'Maybe').length > 0;
 }
 
 async function sendChat() {
@@ -1452,32 +1594,26 @@ async function sendChat() {
   document.getElementById('chatSendBtn').disabled = true;
   document.getElementById('chatSuggestions').style.display = 'none';
 
-  appendBubble(msg, 'user');
+  appendMsg(msg, 'user');
   chatHistory.push({ role: 'user', content: msg });
 
-  const thinking = appendBubble('Thinking…', 'thinking');
+  const thinking = appendMsg('Thinking…', 'thinking');
 
   try {
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: chatHistory,
-        systemPrompt: buildSystemPrompt(),
-      }),
+      body: JSON.stringify({ messages: chatHistory, systemPrompt: buildSystemPrompt() }),
     });
     const data = await res.json();
     thinking.remove();
-
     if (data.error) throw new Error(data.error);
-
     const reply = data.reply || 'No response.';
-    appendBubble(reply, 'assistant');
+    appendMsg(reply, 'assistant');
     chatHistory.push({ role: 'assistant', content: reply });
-
   } catch(e) {
     thinking.remove();
-    appendBubble(`Error: ${e.message}`, 'assistant');
+    appendMsg(`Error: ${e.message}`, 'assistant');
   }
 
   document.getElementById('chatSendBtn').disabled = false;
@@ -1489,23 +1625,26 @@ function sendSuggestion(btn) {
   sendChat();
 }
 
-function appendBubble(text, type) {
+function appendMsg(text, type) {
   const msgs = document.getElementById('chatMessages');
   const el = document.createElement('div');
-  el.className = `chat-bubble ${type}`;
+  el.className = `chat-msg ${type}`;
   el.textContent = text;
   msgs.appendChild(el);
   msgs.scrollTop = msgs.scrollHeight;
   return el;
 }
 
-// Show suggestions after results load
 function activateChat() {
   if (buildChatContext()) {
     document.getElementById('chatSuggestions').style.display = 'flex';
-    document.getElementById('chatSuggestions').style.flexDirection = 'column';
+    // Pulse the bubble to signal new context
+    document.getElementById('bubblePulse').classList.add('active');
   }
 }
+
+// Close chat on Escape
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && chatOpen) toggleChat(); });
 </script>
 </body>
 </html>
