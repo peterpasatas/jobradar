@@ -649,13 +649,13 @@ nav {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
-  display: grid;
-  grid-template-rows: auto auto 58px 1px 1fr;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
 .term-header {
-  padding: 14px 16px 10px;
+  padding: 12px 16px 10px;
   border-bottom: 1px solid var(--border);
   display: flex; align-items: center; gap: 8px;
   flex-shrink: 0;
@@ -701,7 +701,7 @@ nav {
 }
 
 .term-progress {
-  padding: 10px 16px 8px;
+  padding: 8px 16px 6px;
   flex-shrink: 0;
 }
 .prog-bar-wrap {
@@ -719,6 +719,8 @@ nav {
 }
 
 .term-log {
+  height: 60px;
+  flex-shrink: 0;
   overflow: hidden;
   padding: 4px 16px 6px;
   font-family: 'JetBrains Mono', monospace;
@@ -741,6 +743,7 @@ nav {
 .chat-panel {
   display: flex;
   flex-direction: column;
+  flex: 1;
   overflow: hidden;
   min-height: 0;
 }
@@ -1421,8 +1424,7 @@ function buildSystemPrompt() {
   if (!relevant.length) return 'You are a career assistant. No job results are loaded yet — ask the user to run a search first.';
   const jobSummaries = relevant.map(r =>
     `- ${r.title} at ${r.company} (${r.location}) — Score: ${r.relevance_score}, ${r.recommendation}. ${r.summary || ''}`
-  ).join('
-');
+  ).join('\n');
   return `You are a sharp, direct career advisor embedded in JobRadar — an AI-powered job matching tool. You have access to the user's current search results (Apply and Maybe recommendations only).
 
 CURRENT JOB RESULTS:
