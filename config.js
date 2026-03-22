@@ -71,6 +71,59 @@ async function collectJobs(queries, countries, resultsPerQuery = 50, maxDaysOld 
   return { jobs: [...unique.values()], skipped };
 }
 
+// Maps country names to SerpAPI gl/hl/location params
+const SERP_COUNTRY_MAP = {
+  'United Kingdom':  { gl: 'gb', hl: 'en', location: 'London, England, United Kingdom' },
+  'Germany':         { gl: 'de', hl: 'de', location: 'Berlin, Germany' },
+  'Spain':           { gl: 'es', hl: 'es', location: 'Madrid, Spain' },
+  'Portugal':        { gl: 'pt', hl: 'pt', location: 'Lisbon, Portugal' },
+  'Belgium':         { gl: 'be', hl: 'en', location: 'Brussels, Belgium' },
+  'Luxembourg':      { gl: 'lu', hl: 'en', location: 'Luxembourg City, Luxembourg' },
+  'Switzerland':     { gl: 'ch', hl: 'en', location: 'Zurich, Switzerland' },
+  'Netherlands':     { gl: 'nl', hl: 'nl', location: 'Amsterdam, Netherlands' },
+  'France':          { gl: 'fr', hl: 'fr', location: 'Paris, France' },
+  'Remote':          { gl: 'gb', hl: 'en', location: 'London, England, United Kingdom' },
+};
+
+async function fetchSerpJobs(query, countryName) {
+  const params = SERP_COUNTRY_MAP[countryName] || { gl: 'gb', hl: 'en', location: countryName };
+  try {
+    const res = await fetch('/api/fetch-serp-jobs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, location: params.location, gl: params.gl, hl: params.hl }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    return data.results || [];
+  } catch(e) {
+    console.warn(`SerpAPI "${query}" in ${countryName}: ${e.message}`);
+    return [];
+  }
+}
+
+async function collectSerpJobs(queries, countries, onProgress) {
+  const unique = new Map();
+  let skipped = 0;
+  const total = queries.length * countries.length;
+  let done = 0;
+
+  for (const country of countries) {
+    for (const query of queries) {
+      const raw = await fetchSerpJobs(query, country);
+      for (const job of raw) {
+        if (!job.id || unique.has(job.id)) continue;
+        if (isExcluded(job)) { skipped++; continue; }
+        unique.set(job.id, job);
+      }
+      done++;
+      onProgress && onProgress(done, total, `[${country}] "${query}"`);
+      await sleep(500); // SerpAPI rate limit buffer
+    }
+  }
+  return { jobs: [...unique.values()], skipped };
+}
+
 async function scoreJobsWithGemini(jobs, resumeText, onProgress) {
   const BATCH_SIZE = 10;
   const allScored  = [];
