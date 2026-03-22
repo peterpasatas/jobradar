@@ -94,6 +94,8 @@ async function fetchSerpJobs(query, location, gl = 'gb', hl = 'en') {
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
+    if (data.debug) console.log(`SerpAPI debug [${location}] "${query}":`, data.debug);
+    if (data.debug?.serpapi_error) console.error('SerpAPI error:', data.debug.serpapi_error);
     return data.results || [];
   } catch(e) {
     console.warn(`SerpAPI "${query}" in ${location}: ${e.message}`);
