@@ -26,7 +26,7 @@ export default async function handler(req, res) {
     const prompt = `You are a strict hiring evaluator. Your job is to assess whether a candidate would realistically pass an initial recruiter screen for each role.
 
 ## CANDIDATE RESUME
-${resumeText.slice(0, 3500)}
+${resumeText.slice(0, 4500)}
 
 ## JOB POSTINGS
 ${postingsJson}
