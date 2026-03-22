@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    const { query, location, gl = 'gb', hl = 'en' } = req.body;
+    const { query, location, gl = 'gb', hl = 'en', dateRange = '3days' } = req.body;
 
     if (!query || !location) {
       return res.status(400).json({ error: 'query and location are required' });
@@ -27,7 +27,9 @@ export default async function handler(req, res) {
     url.searchParams.set('gl',       gl);
     url.searchParams.set('hl',       hl);
     url.searchParams.set('ltype',    'l');  // strict location filtering
-    url.searchParams.set('chips',    'date_posted:3days,employment_type:FULLTIME');
+    const dateMap = { today: 'today', '3days': '3days', week: 'week' };
+    const datePart = dateMap[dateRange] || '3days';
+    url.searchParams.set('chips', `date_posted:${datePart},employment_type:FULLTIME`);
     url.searchParams.set('api_key',  process.env.SERPAPI_KEY);
 
     const response = await fetch(url.toString());
@@ -44,7 +46,22 @@ export default async function handler(req, res) {
     console.log('Jobs found:', data.jobs_results?.length ?? 0);
     if (data.error) console.error('SerpAPI error field:', data.error);
 
-    const jobs = (data.jobs_results || []).map(job => normaliseJob(job));
+    const allJobs = (data.jobs_results || []).map(job => normaliseJob(job));
+
+    // Filter to LinkedIn results only — via field contains "LinkedIn"
+    const linkedInJobs = allJobs.filter(job =>
+      (job.via || '').toLowerCase().includes('linkedin')
+    );
+
+    // Filter by location — only keep jobs whose location contains the searched city
+    // This prevents Google returning Leeds/Birmingham when searching London
+    const cityLower = location.split(',')[0].trim().toLowerCase();
+    const jobs = linkedInJobs.filter(job => {
+      const jobLoc = (job.location || '').toLowerCase();
+      return jobLoc.includes(cityLower) || jobLoc.includes('remote') || jobLoc.includes('united kingdom') || jobLoc === '';
+    });
+
+    console.log(`Total: ${allJobs.length}, LinkedIn: ${linkedInJobs.length}, City-filtered: ${jobs.length}`);
 
     return res.status(200).json({
       results: jobs,
