@@ -21,11 +21,11 @@ export default async function handler(req, res) {
     // chips=date_posted:today filters to jobs posted in the last 24 hours
     const url = new URL('https://serpapi.com/search');
     url.searchParams.set('engine',   'google_jobs');
-    url.searchParams.set('q',        query);
+    url.searchParams.set('q', query);
     url.searchParams.set('location', location);
     url.searchParams.set('gl',       gl);
     url.searchParams.set('hl',       hl);
-    url.searchParams.set('chips',    'date_posted:3days');  // last 3 days — 'today' too restrictive
+    url.searchParams.set('chips',    'date_posted:3days,employment_type:FULLTIME');
     url.searchParams.set('api_key',  process.env.SERPAPI_KEY);
 
     const response = await fetch(url.toString());
