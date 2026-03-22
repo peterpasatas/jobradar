@@ -23,7 +23,7 @@ export default async function handler(req, res) {
       location: j.location, description: j.description,
     })), null, 2);
 
-    const prompt = `You are a hiring evaluator. Score each job against the candidate resume below.
+    const prompt = `You are a strict hiring evaluator. Your job is to assess whether a candidate would realistically pass an initial recruiter screen for each role.
 
 ## CANDIDATE RESUME
 ${resumeText.slice(0, 3500)}
@@ -31,28 +31,48 @@ ${resumeText.slice(0, 3500)}
 ## JOB POSTINGS
 ${postingsJson}
 
-## SCORING RULES
-For each job, score 0-100 based on:
-- Skills match (40pts): required skills matched vs missing. Award partial for adjacent/transferable skills.
-- Experience level (25pts): full if candidate meets or exceeds years required, partial if slightly below.
-- Role alignment (20pts): same function=high, adjacent=medium, different=low.
-- Domain fit (15pts): same industry=high, adjacent=medium, unrelated=low.
+## HOW TO EVALUATE
 
-HARD CAPS (apply before scoring):
-- Under 40% of required skills matched → max 50
-- Candidate 2+ seniority levels below role → max 45
-- Completely unrelated domain, no transferable skills → max 40
+### Step 1 — Identify what the role actually requires
+For each job, extract:
+- Core requirements: skills/experience explicitly marked as required, essential, or must-have — or clearly central to the role's function
+- Nice-to-haves: beneficial but not blocking
 
-PENALTIES (apply after scoring):
-- Missing critical required skill → -10 to -25
+### Step 2 — Honestly assess the candidate against those requirements
+- Direct match: candidate has demonstrably done this before
+- Adjacent match: candidate has done something meaningfully similar but not identical — only counts for nice-to-haves, NOT for core requirements
+- Gap: candidate has no relevant evidence
+
+IMPORTANT: Adjacent or transferable skills can ONLY compensate for missing nice-to-haves. They do NOT compensate for missing core requirements. If a role requires a specific technical skill and the candidate has never done it, that is a gap — even if they work in a related field.
+
+### Step 3 — Score
+- Skills match (40pts): % of core requirements directly met × 30pts, plus up to 10pts for nice-to-haves
+- Experience level (25pts): full if meets/exceeds required years, scaled down if below
+- Role alignment (20pts): how closely the candidate's past roles match this role's function
+- Domain fit (15pts): industry/sector match
+
+HARD CAPS:
+- Under 40% of core requirements directly met → max score 50
+- Candidate seniority 2+ levels below role → max score 45
+- No relevant experience in the role's core function → max score 40
+
+PENALTIES (subtract after scoring):
+- Each missing core requirement → -10 to -20 depending on centrality
 - Overqualified by 2+ levels → -10
 
-RECOMMENDATION:
-- "Apply" = score >= 70 and no major skill gaps
-- "Maybe" = score 45-69 or some gaps
-- "Skip" = score < 45
+### Step 4 — Calibrate
+- 85-100: Exceptional fit — candidate meets nearly all requirements directly
+- 70-84: Strong fit — meets most requirements, minor gaps
+- 55-69: Plausible — meets some requirements, notable gaps
+- 40-54: Long shot — significant gaps in core requirements
+- Below 40: Poor fit — fundamental mismatch
 
-Focus on real hiring likelihood, NOT keyword matching. Consider adjacent and transferable skills.
+Be conservative and honest. Do not inflate scores because the candidate works in a broadly related field. A score above 80 should be rare and well-justified.
+
+RECOMMENDATION:
+- "Apply" = score >= 70 and no missing core requirements
+- "Maybe" = score 45-69 or 1-2 gaps that could be addressed
+- "Skip" = score < 45 or multiple missing core requirements
 
 ## OUTPUT
 Return ONLY a JSON array with exactly ${jobs.length} objects, no markdown, no explanation:
