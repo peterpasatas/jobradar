@@ -105,15 +105,18 @@ If either fails, score MUST be reduced below 85.
 A score of 90+ should be exceptional and rare.
 
 ### STEP 8 — Recommendation
+Score is the PRIMARY gate. Apply in order — first match wins:
+- "Skip" = score < 45 (always Skip regardless of any other condition)
 - "Apply" = score ≥ 70 AND core match % ≥ 60% AND no missing critical core requirements
-- "Maybe" = score 45–69 OR core match % 40–59% OR 1–2 addressable gaps
-- "Skip" = score < 45 OR core match % < 40% OR fundamental skill mismatch
+- "Maybe" = everything else (score 45–69, or Apply conditions not fully met)
+
+Never assign "Maybe" or "Apply" to a score below 45.
 
 ---
 
 ## OUTPUT
 Return ONLY a valid JSON array with exactly ${jobs.length} objects. No markdown, no explanation:
-[{"index":integer,"extracted_title":string,"skills":string[],"experience_years":integer,"summary":"1-2 sentences: role purpose, which core requirements the candidate meets directly, which critical ones are missing","relevance_score":integer,"recommendation":"Apply"|"Maybe"|"Skip"}]
+[{"index":integer,"extracted_title":string,"skills":string[5 max],"experience_years":integer,"summary":"Exactly this format: '[Role type 2-4 words]. Strong in [2-3 matched strengths]. Weak in [2-3 critical gaps].' e.g. 'AI Enablement Consultant. Strong in stakeholder management, Power Platform, workshop delivery. Weak in Python, cloud infrastructure, RAG.'","relevance_score":integer,"recommendation":"Apply"|"Maybe"|"Skip"}]
 
 Evaluate all ${jobs.length} jobs now.`;
 
