@@ -744,10 +744,11 @@ nav {
 .chat-bubble-btn {
   position: fixed;
   bottom: 28px;
-  right: 28px;
+  right: 20px;
   z-index: 300;
   display: flex;
   align-items: center;
+  flex-direction: row-reverse;
   gap: 10px;
   cursor: pointer;
 }
@@ -795,7 +796,7 @@ nav {
   backdrop-filter: blur(20px);
   transition: all 0.2s ease;
   opacity: 0;
-  transform: translateX(8px);
+  transform: translateX(-8px);
   pointer-events: none;
 }
 .chat-bubble-btn:hover .bubble-label {
@@ -1139,7 +1140,7 @@ nav {
     </svg>
   </div>
   <div class="bubble-pulse" id="bubblePulse"></div>
-  <div class="bubble-label" id="bubbleLabel">Career Assistant</div>
+  <div class="bubble-label" id="bubbleLabel">Talent Agent</div>
 </div>
 
 <!-- CHAT OVERLAY MODAL -->
@@ -1148,7 +1149,7 @@ nav {
     <div class="chat-modal-header">
       <div style="display:flex;align-items:center;gap:10px;">
         <div style="width:8px;height:8px;border-radius:50%;background:var(--accent-green);box-shadow:0 0 8px var(--accent-green);"></div>
-        <span class="chat-modal-title">Career Assistant</span>
+        <span class="chat-modal-title">Talent Agent</span>
         <span class="chat-modal-model">mistral nemo</span>
       </div>
       <button class="chat-modal-close" onclick="toggleChat()">
@@ -1564,7 +1565,7 @@ function closeChatOnBackdrop(e) {
 
 function buildSystemPrompt() {
   const relevant = allResults.filter(r => r.recommendation === 'Apply' || r.recommendation === 'Maybe');
-  if (!relevant.length) return 'You are a career assistant. No job results are loaded yet — ask the user to run a search first.';
+  if (!relevant.length) return 'You are a Talent Agent. No job results are loaded yet — ask the user to run a search first.';
   const jobSummaries = relevant.map(r =>
     `- ${r.title} at ${r.company} (${r.location}) — Score: ${r.relevance_score}, ${r.recommendation}. ${r.summary || ''}`
   ).join('\n');
