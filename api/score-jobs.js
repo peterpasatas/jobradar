@@ -116,7 +116,7 @@ Never assign "Maybe" or "Apply" to a score below 45.
 
 ## OUTPUT
 Return ONLY a valid JSON array with exactly ${jobs.length} objects. No markdown, no explanation:
-[{"index":integer,"extracted_title":string,"skills":string[5 max],"experience_years":integer,"summary":"Exactly this format: '[Role type 2-4 words]. Strong in [2-3 matched strengths]. Weak in [2-3 critical gaps].' e.g. 'AI Enablement Consultant. Strong in stakeholder management, Power Platform, workshop delivery. Weak in Python, cloud infrastructure, RAG.'","relevance_score":integer,"recommendation":"Apply"|"Maybe"|"Skip"}]
+[{"index":integer,"extracted_title":string,"skills":string[5 max],"experience_years":integer,"summary":"Exactly this format: '[Role type 2-4 words]. You're strong in [2-3 matched strengths]. You're weak in [2-3 critical gaps].' e.g. 'AI Enablement Consultant. You're strong in stakeholder management, Power Platform, workshop delivery. You're weak in Python, cloud infrastructure, RAG.'","relevance_score":integer,"recommendation":"Apply"|"Maybe"|"Skip"}]
 
 Evaluate all ${jobs.length} jobs now.`;
 
