@@ -96,7 +96,7 @@ async function fetchSerpJobs(query, location, gl = 'gb', hl = 'en') {
     const data = await res.json();
     return data.results || [];
   } catch(e) {
-    console.warn(`SerpAPI "${query}" in ${countryName}: ${e.message}`);
+    console.warn(`SerpAPI "${query}" in ${location}: ${e.message}`);
     return [];
   }
 }
