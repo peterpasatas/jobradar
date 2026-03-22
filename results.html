@@ -137,7 +137,7 @@ nav {
 .cmd-bar::-webkit-scrollbar { display: none; }
 
 .cmd-group { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-.cmd-label { font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--text-3); white-space: nowrap; }
+.cmd-label { font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--text-2); white-space: nowrap; }
 .cmd-sep { width: 1px; height: 18px; background: var(--border); }
 
 .tags-inline { display: flex; flex-wrap: nowrap; gap: 4px; align-items: center; }
@@ -752,6 +752,37 @@ nav {
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ── COUNTRY PICKER ───────────────────────────── */
+.country-picker { position: relative; display: inline-flex; align-items: center; }
+.country-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 200px;
+  max-height: 220px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  z-index: 500;
+  display: none;
+}
+.country-dropdown.open { display: block; }
+.country-option {
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all 0.12s;
+  font-family: 'DM Sans', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.country-option:hover { background: var(--surface); color: var(--text); }
+.country-option .flag { font-size: 15px; }
 </style>
 </head>
 <body>
@@ -781,7 +812,10 @@ nav {
     <div class="cmd-sep"></div>
     <span class="cmd-label">Countries</span>
     <div class="tags-inline" id="countriesInline"></div>
-    <input class="tag-input-inline" id="countryInput" placeholder="+ gb/de">
+    <div class="country-picker" id="countryPickerAdzuna">
+      <input class="tag-input-inline" id="countryInput" placeholder="+ country" autocomplete="off" oninput="filterCountryDropdown('countryInput','countryDropdownAdzuna')" onfocus="showCountryDropdown('countryDropdownAdzuna')" onblur="hideCountryDropdown('countryDropdownAdzuna', 300)">
+      <div class="country-dropdown" id="countryDropdownAdzuna"></div>
+    </div>
     <div class="cmd-sep"></div>
     <span class="cmd-label">Results</span>
     <input type="number" class="num-inline" id="resultsPerQuery" value="10" min="1" max="50">
@@ -800,7 +834,10 @@ nav {
     <div class="cmd-sep"></div>
     <span class="cmd-label">Countries</span>
     <div class="tags-inline" id="serpCountriesInline"></div>
-    <input class="tag-input-inline" id="serpCountryInput" placeholder="+ United Kingdom">
+    <div class="country-picker" id="countryPickerSerp">
+      <input class="tag-input-inline" id="serpCountryInput" placeholder="+ country" autocomplete="off" oninput="filterCountryDropdown('serpCountryInput','countryDropdownSerp')" onfocus="showCountryDropdown('countryDropdownSerp')" onblur="hideCountryDropdown('countryDropdownSerp', 300)">
+      <div class="country-dropdown" id="countryDropdownSerp"></div>
+    </div>
     <div class="cmd-sep"></div>
     <span class="cmd-label">Posted</span>
     <select id="serpDateRange" class="num-inline" style="width:auto;">
@@ -916,6 +953,16 @@ let userId = null, allResults = [];
 let queries = [], countries = [], serpQueries = [], serpCities = [], serpCountries = [];
 let activeRecFilter = 'all';
 let chatHistory = [], chatOpen = false;
+
+// Country code → display name map (used before COUNTRY_PICKER section loads)
+const COUNTRY_DISPLAY = {
+  gb: '🇬🇧 United Kingdom', de: '🇩🇪 Germany', fr: '🇫🇷 France',
+  es: '🇪🇸 Spain', nl: '🇳🇱 Netherlands', at: '🇦🇹 Austria',
+  ch: '🇨🇭 Switzerland', it: '🇮🇹 Italy', pl: '🇵🇱 Poland',
+  se: '🇸🇪 Sweden', be: '🇧🇪 Belgium', us: '🇺🇸 United States',
+  ca: '🇨🇦 Canada', au: '🇦🇺 Australia', za: '🇿🇦 South Africa',
+  'in': '🇮🇳 India', sg: '🇸🇬 Singapore', nz: '🇳🇿 New Zealand', ae: '🇦🇪 UAE',
+};
 
 sb.auth.getSession().then(({data}) => {
   if (!data.session) { window.location.href = 'index.html'; return; }
@@ -1150,27 +1197,34 @@ function applyFilters() {
 
 function renderAllTags() {
   renderInlineTags('queriesInline', queries, 'queryInput');
-  renderInlineTags('countriesInline', countries, 'countryInput');
+  renderInlineTags('countriesInline', countries, 'countryInput', COUNTRY_DISPLAY);
   renderInlineTags('serpQueriesInline', serpQueries, 'serpQueryInput');
   renderInlineTags('serpCitiesInline', serpCities, 'serpCityInput');
   renderInlineTags('serpCountriesInline', serpCountries, 'serpCountryInput');
 }
 
-function renderInlineTags(containerId, arr, inputId) {
+function renderInlineTags(containerId, arr, inputId, displayMap = null) {
   const container = document.getElementById(containerId);
   container.querySelectorAll('.tag-pill').forEach(t => t.remove());
   arr.forEach((tag, i) => {
     const el = document.createElement('span');
     el.className = 'tag-pill';
-    el.innerHTML = `${tag}<button onclick="removeInlineTag('${containerId}','${inputId}',${i})">×</button>`;
+    const label = displayMap?.[tag] || tag;
+    el.innerHTML = `${label}<button onclick="removeInlineTag('${containerId}','${inputId}',${i})">×</button>`;
     container.appendChild(el);
   });
+}
+
+function renderInlineTagsWithDisplay(containerId, arr, inputId, displayMap) {
+  renderInlineTags(containerId, arr, inputId, displayMap);
 }
 
 function removeInlineTag(containerId, inputId, idx) {
   const arrMap = { 'queriesInline': queries, 'countriesInline': countries, 'serpQueriesInline': serpQueries, 'serpCitiesInline': serpCities, 'serpCountriesInline': serpCountries };
   const arr = arrMap[containerId]; if (!arr) return;
-  arr.splice(idx, 1); renderInlineTags(containerId, arr, inputId);
+  arr.splice(idx, 1);
+  const displayMap = containerId === 'countriesInline' ? COUNTRY_DISPLAY : null;
+  renderInlineTags(containerId, arr, inputId, displayMap);
 }
 
 function setupInlineTagInput(inputId, arr, containerId) {
@@ -1187,10 +1241,10 @@ function setupInlineTagInput(inputId, arr, containerId) {
 }
 
 setupInlineTagInput('queryInput', queries, 'queriesInline');
-setupInlineTagInput('countryInput', countries, 'countriesInline');
+// countryInput handled by country picker dropdown
 setupInlineTagInput('serpQueryInput', serpQueries, 'serpQueriesInline');
 setupInlineTagInput('serpCityInput', serpCities, 'serpCitiesInline');
-setupInlineTagInput('serpCountryInput', serpCountries, 'serpCountriesInline');
+// serpCountryInput handled by country picker dropdown
 
 function toggleSource() {
   const isSerp = document.getElementById('srcSerp').checked;
@@ -1224,14 +1278,14 @@ function updateScoringLine(id, pct, done, total) {
   const filled = Math.floor(pct / 5);
   const bar = '█'.repeat(filled) + '░'.repeat(20 - filled);
   const ts = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  line.innerHTML = `<span class="log-t">${ts}</span>&nbsp;&nbsp;<span class="log-info">${bar}&nbsp; ${String(pct).padStart(3,' ')}% &nbsp;(${done}/${total})</span>`;
+  line.innerHTML = `<span class="log-t">${ts}</span>&nbsp;&nbsp;<span class="log-info">${bar}&nbsp; ${String(pct).padStart(3,' ')}%</span>`;
 }
 
 function finaliseScoringLine(id, count) {
   const line = document.getElementById(id);
   if (line) {
     const ts = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-    line.innerHTML = `<span class="log-t">${ts}</span>&nbsp;&nbsp;<span class="log-ok">${'█'.repeat(20)}&nbsp; 100% &nbsp;(${count}/${count}) ✓</span>`;
+    line.innerHTML = `<span class="log-t">${ts}</span>&nbsp;&nbsp;<span class="log-ok">${'█'.repeat(20)}&nbsp; 100% ✓</span>`;
   }
 }
 
@@ -1287,10 +1341,13 @@ async function sendChat() {
   document.getElementById('chatSuggestions').style.display = 'none';
   appendMsg(msg, 'user');
   chatHistory.push({ role: 'user', content: msg });
+  // Brief delay before showing typing indicator (feels more natural)
+  const preDelay = (2 + Math.random() * 1) * 1000;
+  await new Promise(r => setTimeout(r, preDelay));
   const thinking = appendMsg('Talent Agent is typing…', 'thinking');
   try {
     const fetchPromise = fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: chatHistory, systemPrompt: buildSystemPrompt() }) });
-    const typingDelay = (6 + Math.random() * 5) * 1000;
+    const typingDelay = (4 + Math.random() * 4) * 1000;
     const [res] = await Promise.all([fetchPromise, new Promise(r => setTimeout(r, typingDelay))]);
     const data = await res.json();
     thinking.remove();
@@ -1313,6 +1370,98 @@ function activateChat() {
 }
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && chatOpen) toggleChat(); });
+
+// ── COUNTRY PICKER ────────────────────────────────
+const ADZUNA_COUNTRIES = [
+  { flag: '🇬🇧', name: 'United Kingdom', code: 'gb' },
+  { flag: '🇩🇪', name: 'Germany',        code: 'de' },
+  { flag: '🇫🇷', name: 'France',         code: 'fr' },
+  { flag: '🇪🇸', name: 'Spain',          code: 'es' },
+  { flag: '🇳🇱', name: 'Netherlands',    code: 'nl' },
+  { flag: '🇦🇹', name: 'Austria',        code: 'at' },
+  { flag: '🇨🇭', name: 'Switzerland',    code: 'ch' },
+  { flag: '🇮🇹', name: 'Italy',          code: 'it' },
+  { flag: '🇵🇱', name: 'Poland',         code: 'pl' },
+  { flag: '🇸🇪', name: 'Sweden',         code: 'se' },
+  { flag: '🇧🇪', name: 'Belgium',        code: 'be' },
+  { flag: '🇺🇸', name: 'United States',  code: 'us' },
+  { flag: '🇨🇦', name: 'Canada',         code: 'ca' },
+  { flag: '🇦🇺', name: 'Australia',      code: 'au' },
+  { flag: '🇿🇦', name: 'South Africa',   code: 'za' },
+  { flag: '🇮🇳', name: 'India',          code: 'in' },
+  { flag: '🇸🇬', name: 'Singapore',      code: 'sg' },
+  { flag: '🇳🇿', name: 'New Zealand',    code: 'nz' },
+  { flag: '🇦🇪', name: 'UAE',            code: 'ae' },
+];
+
+const SERP_COUNTRIES = [
+  { flag: '🇬🇧', name: 'United Kingdom' },
+  { flag: '🇩🇪', name: 'Germany' },
+  { flag: '🇫🇷', name: 'France' },
+  { flag: '🇪🇸', name: 'Spain' },
+  { flag: '🇳🇱', name: 'Netherlands' },
+  { flag: '🇨🇭', name: 'Switzerland' },
+  { flag: '🇧🇪', name: 'Belgium' },
+  { flag: '🇱🇺', name: 'Luxembourg' },
+  { flag: '🇵🇹', name: 'Portugal' },
+  { flag: '🇸🇪', name: 'Sweden' },
+  { flag: '🇳🇴', name: 'Norway' },
+  { flag: '🇩🇰', name: 'Denmark' },
+  { flag: '🇮🇪', name: 'Ireland' },
+  { flag: '🇺🇸', name: 'United States' },
+  { flag: '🇨🇦', name: 'Canada' },
+  { flag: '🇦🇺', name: 'Australia' },
+  { flag: '🇸🇬', name: 'Singapore' },
+];
+
+function buildCountryDropdown(dropdownId, countryList, inputId, arr, containerId) {
+  const dd = document.getElementById(dropdownId);
+  dd.innerHTML = countryList.map(c => {
+    const label = c.code ? `${c.flag} ${c.name} (${c.code})` : `${c.flag} ${c.name}`;
+    const value = c.code || c.name;
+    const display = c.code ? c.name : c.name;
+    return `<div class="country-option" onmousedown="selectCountry('${value}','${display}','${inputId}','${dropdownId}','${containerId}')"><span class="flag">${c.flag}</span>${display}</div>`;
+  }).join('');
+}
+
+function showCountryDropdown(dropdownId) {
+  const isAdzuna = dropdownId === 'countryDropdownAdzuna';
+  const countryList = isAdzuna ? ADZUNA_COUNTRIES : SERP_COUNTRIES;
+  const inputId = isAdzuna ? 'countryInput' : 'serpCountryInput';
+  const containerId = isAdzuna ? 'countriesInline' : 'serpCountriesInline';
+  buildCountryDropdown(dropdownId, countryList, inputId, isAdzuna ? countries : serpCountries, containerId);
+  document.getElementById(dropdownId).classList.add('open');
+}
+
+function hideCountryDropdown(dropdownId, delay = 0) {
+  setTimeout(() => document.getElementById(dropdownId)?.classList.remove('open'), delay);
+}
+
+function filterCountryDropdown(inputId, dropdownId) {
+  const val = document.getElementById(inputId).value.toLowerCase();
+  const isAdzuna = dropdownId === 'countryDropdownAdzuna';
+  const countryList = isAdzuna ? ADZUNA_COUNTRIES : SERP_COUNTRIES;
+  const containerId = isAdzuna ? 'countriesInline' : 'serpCountriesInline';
+  const filtered = val ? countryList.filter(c => c.name.toLowerCase().includes(val) || (c.code && c.code.includes(val))) : countryList;
+  const dd = document.getElementById(dropdownId);
+  const arr = isAdzuna ? countries : serpCountries;
+  dd.innerHTML = filtered.map(c => {
+    const value = c.code || c.name;
+    return `<div class="country-option" onmousedown="selectCountry('${value}','${c.name}','${inputId}','${dropdownId}','${containerId}')"><span class="flag">${c.flag}</span>${c.name}</div>`;
+  }).join('');
+  if (!dd.classList.contains('open')) dd.classList.add('open');
+}
+
+function selectCountry(value, display, inputId, dropdownId, containerId) {
+  const isAdzuna = dropdownId === 'countryDropdownAdzuna';
+  const arr = isAdzuna ? countries : serpCountries;
+  if (!arr.includes(value)) {
+    arr.push(value);
+    renderInlineTagsWithDisplay(containerId, arr, inputId, isAdzuna ? COUNTRY_DISPLAY : null);
+  }
+  document.getElementById(inputId).value = '';
+  document.getElementById(dropdownId).classList.remove('open');
+}
 </script>
 </body>
 </html>
