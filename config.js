@@ -85,12 +85,12 @@ const SERP_COUNTRY_MAP = {
   'Remote':          { gl: 'gb', hl: 'en', location: 'London, England, United Kingdom' },
 };
 
-async function fetchSerpJobs(query, location, gl = 'gb', hl = 'en') {
+async function fetchSerpJobs(query, location, gl = 'gb', hl = 'en', dateRange = '3days') {
   try {
     const res = await fetch('/api/fetch-serp-jobs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, location, gl, hl }),
+      body: JSON.stringify({ query, location, gl, hl, dateRange }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
@@ -103,7 +103,7 @@ async function fetchSerpJobs(query, location, gl = 'gb', hl = 'en') {
   }
 }
 
-async function collectSerpJobs(queries, locations, countries, onProgress) {
+async function collectSerpJobs(queries, locations, countries, dateRange = '3days', onProgress) {
   // locations = cities if provided, otherwise country names
   // countries = used for gl/hl localisation params
   const unique = new Map();
@@ -120,7 +120,7 @@ async function collectSerpJobs(queries, locations, countries, onProgress) {
     const params = SERP_COUNTRY_MAP[countryName] || { gl: 'gb', hl: 'en' };
 
     for (const query of queries) {
-      const raw = await fetchSerpJobs(query, location, params.gl, params.hl);
+      const raw = await fetchSerpJobs(query, location, params.gl, params.hl, dateRange);
       for (const job of raw) {
         if (!job.id || unique.has(job.id)) continue;
         if (isExcluded(job)) { skipped++; continue; }
@@ -135,7 +135,7 @@ async function collectSerpJobs(queries, locations, countries, onProgress) {
 }
 
 async function scoreJobsWithGemini(jobs, resumeText, onProgress) {
-  const BATCH_SIZE = 25;
+  const BATCH_SIZE = 10;
   const allScored  = [];
   const batches    = Math.ceil(jobs.length / BATCH_SIZE);
 
