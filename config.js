@@ -85,13 +85,12 @@ const SERP_COUNTRY_MAP = {
   'Remote':          { gl: 'gb', hl: 'en', location: 'London, England, United Kingdom' },
 };
 
-async function fetchSerpJobs(query, countryName) {
-  const params = SERP_COUNTRY_MAP[countryName] || { gl: 'gb', hl: 'en', location: countryName };
+async function fetchSerpJobs(query, location, gl = 'gb', hl = 'en') {
   try {
     const res = await fetch('/api/fetch-serp-jobs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, location: params.location, gl: params.gl, hl: params.hl }),
+      body: JSON.stringify({ query, location, gl, hl }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
@@ -102,23 +101,32 @@ async function fetchSerpJobs(query, countryName) {
   }
 }
 
-async function collectSerpJobs(queries, countries, onProgress) {
+async function collectSerpJobs(queries, locations, countries, onProgress) {
+  // locations = cities if provided, otherwise country names
+  // countries = used for gl/hl localisation params
   const unique = new Map();
   let skipped = 0;
-  const total = queries.length * countries.length;
+  const total = queries.length * locations.length;
   let done = 0;
 
-  for (const country of countries) {
+  for (const location of locations) {
+    // Find matching country params for this location
+    // Try exact country match first, then default to gb
+    const countryName = countries.find(c =>
+      location.toLowerCase().includes(c.toLowerCase().split(' ')[0].toLowerCase())
+    ) || countries[0] || 'United Kingdom';
+    const params = SERP_COUNTRY_MAP[countryName] || { gl: 'gb', hl: 'en' };
+
     for (const query of queries) {
-      const raw = await fetchSerpJobs(query, country);
+      const raw = await fetchSerpJobs(query, location, params.gl, params.hl);
       for (const job of raw) {
         if (!job.id || unique.has(job.id)) continue;
         if (isExcluded(job)) { skipped++; continue; }
         unique.set(job.id, job);
       }
       done++;
-      onProgress && onProgress(done, total, `[${country}] "${query}"`);
-      await sleep(500); // SerpAPI rate limit buffer
+      onProgress && onProgress(done, total, `[${location}] "${query}"`);
+      await sleep(500);
     }
   }
   return { jobs: [...unique.values()], skipped };
