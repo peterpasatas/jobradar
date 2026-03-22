@@ -140,7 +140,7 @@ nav {
 .cmd-label { font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--text-2); white-space: nowrap; }
 .cmd-sep { width: 1px; height: 18px; background: var(--border); }
 
-.tags-inline { display: flex; flex-wrap: nowrap; gap: 4px; align-items: center; }
+.tags-inline { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; max-width: 180px; }
 .tag-pill {
   display: inline-flex; align-items: center; gap: 4px;
   background: var(--surface);
@@ -756,17 +756,15 @@ nav {
 /* ── COUNTRY PICKER ───────────────────────────── */
 .country-picker { position: relative; display: inline-flex; align-items: center; }
 .country-dropdown {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  min-width: 200px;
-  max-height: 220px;
+  position: fixed;
+  min-width: 220px;
+  max-height: 240px;
   overflow-y: auto;
   background: #fff;
   border: 1px solid var(--border-strong);
   border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-  z-index: 500;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.14);
+  z-index: 1000;
   display: none;
 }
 .country-dropdown.open { display: block; }
@@ -782,7 +780,7 @@ nav {
   gap: 8px;
 }
 .country-option:hover { background: var(--surface); color: var(--text); }
-.country-option .flag { font-size: 15px; }
+
 </style>
 </head>
 <body>
@@ -956,12 +954,12 @@ let chatHistory = [], chatOpen = false;
 
 // Country code → display name map (used before COUNTRY_PICKER section loads)
 const COUNTRY_DISPLAY = {
-  gb: '🇬🇧 United Kingdom', de: '🇩🇪 Germany', fr: '🇫🇷 France',
-  es: '🇪🇸 Spain', nl: '🇳🇱 Netherlands', at: '🇦🇹 Austria',
-  ch: '🇨🇭 Switzerland', it: '🇮🇹 Italy', pl: '🇵🇱 Poland',
-  se: '🇸🇪 Sweden', be: '🇧🇪 Belgium', us: '🇺🇸 United States',
-  ca: '🇨🇦 Canada', au: '🇦🇺 Australia', za: '🇿🇦 South Africa',
-  'in': '🇮🇳 India', sg: '🇸🇬 Singapore', nz: '🇳🇿 New Zealand', ae: '🇦🇪 UAE',
+  gb: 'United Kingdom', de: 'Germany', fr: 'France',
+  es: 'Spain', nl: 'Netherlands', at: 'Austria',
+  ch: 'Switzerland', it: 'Italy', pl: 'Poland',
+  se: 'Sweden', be: 'Belgium', us: 'United States',
+  ca: 'Canada', au: 'Australia', za: 'South Africa',
+  'in': 'India', sg: 'Singapore', nz: 'New Zealand', ae: 'UAE',
 };
 
 sb.auth.getSession().then(({data}) => {
@@ -1373,54 +1371,52 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && chatOpen) 
 
 // ── COUNTRY PICKER ────────────────────────────────
 const ADZUNA_COUNTRIES = [
-  { flag: '🇬🇧', name: 'United Kingdom', code: 'gb' },
-  { flag: '🇩🇪', name: 'Germany',        code: 'de' },
-  { flag: '🇫🇷', name: 'France',         code: 'fr' },
-  { flag: '🇪🇸', name: 'Spain',          code: 'es' },
-  { flag: '🇳🇱', name: 'Netherlands',    code: 'nl' },
-  { flag: '🇦🇹', name: 'Austria',        code: 'at' },
-  { flag: '🇨🇭', name: 'Switzerland',    code: 'ch' },
-  { flag: '🇮🇹', name: 'Italy',          code: 'it' },
-  { flag: '🇵🇱', name: 'Poland',         code: 'pl' },
-  { flag: '🇸🇪', name: 'Sweden',         code: 'se' },
-  { flag: '🇧🇪', name: 'Belgium',        code: 'be' },
-  { flag: '🇺🇸', name: 'United States',  code: 'us' },
-  { flag: '🇨🇦', name: 'Canada',         code: 'ca' },
-  { flag: '🇦🇺', name: 'Australia',      code: 'au' },
-  { flag: '🇿🇦', name: 'South Africa',   code: 'za' },
-  { flag: '🇮🇳', name: 'India',          code: 'in' },
-  { flag: '🇸🇬', name: 'Singapore',      code: 'sg' },
-  { flag: '🇳🇿', name: 'New Zealand',    code: 'nz' },
-  { flag: '🇦🇪', name: 'UAE',            code: 'ae' },
+  { name: 'United Kingdom', code: 'gb' },
+  { name: 'Germany',        code: 'de' },
+  { name: 'France',         code: 'fr' },
+  { name: 'Spain',          code: 'es' },
+  { name: 'Netherlands',    code: 'nl' },
+  { name: 'Austria',        code: 'at' },
+  { name: 'Switzerland',    code: 'ch' },
+  { name: 'Italy',          code: 'it' },
+  { name: 'Poland',         code: 'pl' },
+  { name: 'Sweden',         code: 'se' },
+  { name: 'Belgium',        code: 'be' },
+  { name: 'United States',  code: 'us' },
+  { name: 'Canada',         code: 'ca' },
+  { name: 'Australia',      code: 'au' },
+  { name: 'South Africa',   code: 'za' },
+  { name: 'India',          code: 'in' },
+  { name: 'Singapore',      code: 'sg' },
+  { name: 'New Zealand',    code: 'nz' },
+  { name: 'UAE',            code: 'ae' },
 ];
 
 const SERP_COUNTRIES = [
-  { flag: '🇬🇧', name: 'United Kingdom' },
-  { flag: '🇩🇪', name: 'Germany' },
-  { flag: '🇫🇷', name: 'France' },
-  { flag: '🇪🇸', name: 'Spain' },
-  { flag: '🇳🇱', name: 'Netherlands' },
-  { flag: '🇨🇭', name: 'Switzerland' },
-  { flag: '🇧🇪', name: 'Belgium' },
-  { flag: '🇱🇺', name: 'Luxembourg' },
-  { flag: '🇵🇹', name: 'Portugal' },
-  { flag: '🇸🇪', name: 'Sweden' },
-  { flag: '🇳🇴', name: 'Norway' },
-  { flag: '🇩🇰', name: 'Denmark' },
-  { flag: '🇮🇪', name: 'Ireland' },
-  { flag: '🇺🇸', name: 'United States' },
-  { flag: '🇨🇦', name: 'Canada' },
-  { flag: '🇦🇺', name: 'Australia' },
-  { flag: '🇸🇬', name: 'Singapore' },
+  { name: 'United Kingdom' },
+  { name: 'Germany' },
+  { name: 'France' },
+  { name: 'Spain' },
+  { name: 'Netherlands' },
+  { name: 'Switzerland' },
+  { name: 'Belgium' },
+  { name: 'Luxembourg' },
+  { name: 'Portugal' },
+  { name: 'Sweden' },
+  { name: 'Norway' },
+  { name: 'Denmark' },
+  { name: 'Ireland' },
+  { name: 'United States' },
+  { name: 'Canada' },
+  { name: 'Australia' },
+  { name: 'Singapore' },
 ];
 
 function buildCountryDropdown(dropdownId, countryList, inputId, arr, containerId) {
   const dd = document.getElementById(dropdownId);
   dd.innerHTML = countryList.map(c => {
-    const label = c.code ? `${c.flag} ${c.name} (${c.code})` : `${c.flag} ${c.name}`;
     const value = c.code || c.name;
-    const display = c.code ? c.name : c.name;
-    return `<div class="country-option" onmousedown="selectCountry('${value}','${display}','${inputId}','${dropdownId}','${containerId}')"><span class="flag">${c.flag}</span>${display}</div>`;
+    return `<div class="country-option" onmousedown="selectCountry('${value}','${c.name}','${inputId}','${dropdownId}','${containerId}')">${c.name}</div>`;
   }).join('');
 }
 
@@ -1430,7 +1426,12 @@ function showCountryDropdown(dropdownId) {
   const inputId = isAdzuna ? 'countryInput' : 'serpCountryInput';
   const containerId = isAdzuna ? 'countriesInline' : 'serpCountriesInline';
   buildCountryDropdown(dropdownId, countryList, inputId, isAdzuna ? countries : serpCountries, containerId);
-  document.getElementById(dropdownId).classList.add('open');
+  const input = document.getElementById(inputId);
+  const rect = input.getBoundingClientRect();
+  const dd = document.getElementById(dropdownId);
+  dd.style.top  = (rect.bottom + 6) + 'px';
+  dd.style.left = rect.left + 'px';
+  dd.classList.add('open');
 }
 
 function hideCountryDropdown(dropdownId, delay = 0) {
@@ -1444,12 +1445,17 @@ function filterCountryDropdown(inputId, dropdownId) {
   const containerId = isAdzuna ? 'countriesInline' : 'serpCountriesInline';
   const filtered = val ? countryList.filter(c => c.name.toLowerCase().includes(val) || (c.code && c.code.includes(val))) : countryList;
   const dd = document.getElementById(dropdownId);
-  const arr = isAdzuna ? countries : serpCountries;
   dd.innerHTML = filtered.map(c => {
     const value = c.code || c.name;
-    return `<div class="country-option" onmousedown="selectCountry('${value}','${c.name}','${inputId}','${dropdownId}','${containerId}')"><span class="flag">${c.flag}</span>${c.name}</div>`;
+    return `<div class="country-option" onmousedown="selectCountry('${value}','${c.name}','${inputId}','${dropdownId}','${containerId}')">${c.name}</div>`;
   }).join('');
-  if (!dd.classList.contains('open')) dd.classList.add('open');
+  if (!dd.classList.contains('open')) {
+    const input = document.getElementById(inputId);
+    const rect = input.getBoundingClientRect();
+    dd.style.top  = (rect.bottom + 6) + 'px';
+    dd.style.left = rect.left + 'px';
+    dd.classList.add('open');
+  }
 }
 
 function selectCountry(value, display, inputId, dropdownId, containerId) {
