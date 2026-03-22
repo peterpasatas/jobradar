@@ -4,11 +4,4 @@
     "api/fetch-serp-jobs.js":  { "maxDuration": 60 },
     "api/chat.js":             { "maxDuration": 30 },
     "api/score-jobs.js":       { "maxDuration": 60 }
-  },
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/index.html", "destination": "/index.html" },
-    { "source": "/results.html", "destination": "/results.html" },
-    { "source": "/config.js", "destination": "/config.js" }
-  ]
-}
+  }
