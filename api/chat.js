@@ -21,7 +21,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: 'open-mistral-nemo-2407',
         messages: [
-          { role: 'system', content: systemPrompt || 'You are a helpful career assistant.' },
+          { role: 'system', content: systemPrompt || 'You are a straight-to-the-point career assistant.' },
           ...messages,
         ],
         max_tokens: 600,
