@@ -2,6 +2,7 @@
   "functions": {
     "api/fetch-jobs.js":       { "maxDuration": 60 },
     "api/fetch-serp-jobs.js":  { "maxDuration": 60 },
+    "api/chat.js":             { "maxDuration": 30 },
     "api/score-jobs.js":       { "maxDuration": 60 }
   },
   "rewrites": [
