@@ -25,7 +25,7 @@ export default async function handler(req, res) {
     url.searchParams.set('location', location);
     url.searchParams.set('gl',       gl);
     url.searchParams.set('hl',       hl);
-    url.searchParams.set('chips',    'date_posted:today');
+    url.searchParams.set('chips',    'date_posted:3days');  // last 3 days — 'today' too restrictive
     url.searchParams.set('api_key',  process.env.SERPAPI_KEY);
 
     const response = await fetch(url.toString());
@@ -36,9 +36,22 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
+
+    // Log what SerpAPI returned for debugging
+    console.log('SerpAPI response keys:', Object.keys(data));
+    console.log('Jobs found:', data.jobs_results?.length ?? 0);
+    if (data.error) console.error('SerpAPI error field:', data.error);
+
     const jobs = (data.jobs_results || []).map(job => normaliseJob(job));
 
-    return res.status(200).json({ results: jobs });
+    return res.status(200).json({
+      results: jobs,
+      debug: {
+        total_found: data.jobs_results?.length ?? 0,
+        serpapi_error: data.error || null,
+        search_metadata: data.search_metadata?.status || null,
+      }
+    });
 
   } catch (e) {
     return res.status(500).json({ error: e.message });
