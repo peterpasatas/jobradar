@@ -139,6 +139,7 @@
   <!-- SIDEBAR -->
   <aside class="sidebar">
 
+    <!-- 1. Resume — always visible -->
     <div class="panel">
       <div class="panel-title">Resume</div>
       <div class="field">
@@ -146,7 +147,25 @@
       </div>
     </div>
 
+    <!-- 2. Data Source selector -->
     <div class="panel">
+      <div class="panel-title">Data Source</div>
+      <div style="display:flex;gap:10px;flex-direction:column;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+          <input type="radio" name="source" value="adzuna" id="srcAdzuna" checked
+            onchange="toggleSource()" style="accent-color:var(--accent);">
+          Adzuna <span style="color:var(--muted);font-size:11px;">(free · job boards · last N days)</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+          <input type="radio" name="source" value="serp" id="srcSerp"
+            onchange="toggleSource()" style="accent-color:var(--accent);">
+          Google Jobs <span style="color:var(--muted);font-size:11px;">(SerpAPI · today's jobs only)</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- 3a. Adzuna search preferences (hidden when Google Jobs selected) -->
+    <div class="panel adzuna-panel">
       <div class="panel-title">Search Preferences</div>
       <div class="field">
         <label>Job titles (Enter to add)</label>
@@ -172,6 +191,31 @@
           <input type="number" id="maxDaysOld" value="15" min="1" max="90"
             style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:8px 10px;outline:none;">
         </div>
+      </div>
+    </div>
+
+    <!-- 3b. Google Jobs preferences (hidden when Adzuna selected) -->
+    <div class="panel" id="serpPanel" style="display:none;">
+      <div class="panel-title">Google Jobs Preferences</div>
+      <div class="field">
+        <label>Job titles (Enter to add)</label>
+        <div class="tags-wrap" id="serpQueriesWrap" onclick="document.getElementById('serpQueryInput').focus()">
+          <input class="tags-input" id="serpQueryInput" placeholder="Add title…">
+        </div>
+      </div>
+      <div class="field">
+        <label>Cities (Enter to add)</label>
+        <div class="tags-wrap" id="serpCitiesWrap" onclick="document.getElementById('serpCityInput').focus()">
+          <input class="tags-input" id="serpCityInput" placeholder="London, Berlin, Madrid…">
+        </div>
+        <div class="field-hint">City-level search gives best results — e.g. London, Berlin, Amsterdam</div>
+      </div>
+      <div class="field">
+        <label>Countries (for localisation)</label>
+        <div class="tags-wrap" id="serpCountriesWrap" onclick="document.getElementById('serpCountryInput').focus()">
+          <input class="tags-input" id="serpCountryInput" placeholder="United Kingdom, Germany…">
+        </div>
+        <div class="field-hint">Full names: United Kingdom · Germany · Spain · Portugal · Belgium · Luxembourg · Switzerland</div>
       </div>
     </div>
 
@@ -226,8 +270,11 @@
   const sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON);
   let userId = null;
   let allResults = [];
-  let queries   = [];
-  let countries = [];
+  let queries      = [];
+  let countries    = [];
+  let serpQueries   = [];
+  let serpCities    = [];
+  let serpCountries = [];
 
   // ── Auth ────────────────────────────────────────────────────
   sb.auth.getSession().then(({data}) => {
@@ -267,10 +314,16 @@
     if (data.resume_text)     document.getElementById('resumeText').value = data.resume_text;
     if (data.search_queries   && data.search_queries.length)   { queries.splice(0, queries.length, ...data.search_queries); }
     if (data.search_countries && data.search_countries.length) { countries.splice(0, countries.length, ...data.search_countries); }
+    if (data.serp_queries     && data.serp_queries.length)     { serpQueries.splice(0, serpQueries.length, ...data.serp_queries); }
+    if (data.serp_cities      && data.serp_cities.length)      { serpCities.splice(0, serpCities.length, ...data.serp_cities); }
+    if (data.serp_countries   && data.serp_countries.length)   { serpCountries.splice(0, serpCountries.length, ...data.serp_countries); }
     if (data.results_per_query) document.getElementById('resultsPerQuery').value = data.results_per_query;
     if (data.max_days_old)      document.getElementById('maxDaysOld').value = data.max_days_old;
-    renderTags('queriesWrap',  queries,   'queryInput');
-    renderTags('countriesWrap', countries, 'countryInput');
+    renderTags('queriesWrap',       queries,       'queryInput');
+    renderTags('countriesWrap',     countries,     'countryInput');
+    renderTags('serpQueriesWrap',   serpQueries,   'serpQueryInput');
+    renderTags('serpCitiesWrap',    serpCities,    'serpCityInput');
+    renderTags('serpCountriesWrap', serpCountries, 'serpCountryInput');
   }
 
   // ── Save preferences ────────────────────────────────────────
@@ -279,6 +332,9 @@
       resume_text:      document.getElementById('resumeText').value.trim(),
       search_queries:    queries,
       search_countries:  countries,
+      serp_queries:      serpQueries,
+      serp_cities:       serpCities,
+      serp_countries:    serpCountries,
       results_per_query: parseInt(document.getElementById('resultsPerQuery').value) || 10,
       max_days_old:      parseInt(document.getElementById('maxDaysOld').value) || 20,
       updated_at:        new Date().toISOString(),
@@ -324,8 +380,11 @@
   async function runSearch() {
     const resume = document.getElementById('resumeText').value.trim();
     if (!resume) { alert('Please paste your resume first.'); return; }
-    if (!queries.length) { alert('Add at least one job title.'); return; }
-    if (!countries.length) { alert('Add at least one country.'); return; }
+
+    // Auto-save preferences before running so they persist on next login
+    await savePreferences();
+
+    const source = document.querySelector('input[name="source"]:checked').value;
 
     allResults = [];
     document.getElementById('progressPanel').classList.add('visible');
@@ -339,14 +398,28 @@
     setProgress(0, 'Fetching jobs from Adzuna…');
 
     try {
-      // Step 1: Collect jobs
-      const resultsPerQuery = parseInt(document.getElementById('resultsPerQuery').value) || 10;
-      const maxDaysOld      = parseInt(document.getElementById('maxDaysOld').value) || 20;
+      // Step 1: Collect jobs from selected source
+      const resultsPerQuery = parseInt(document.getElementById('resultsPerQuery').value) || 50;
+      const maxDaysOld      = parseInt(document.getElementById('maxDaysOld').value) || 15;
 
-      const { jobs, skipped } = await collectJobs(queries, countries, resultsPerQuery, maxDaysOld, (done, total, label) => {
-        addLog(`${label} ✓`, 'ok');
-        setProgress((done / total) * 40, `Fetching… ${done}/${total} queries`);
-      });
+      let jobCollection;
+      if (source === 'serp') {
+        if (!serpQueries.length)   { addLog('Add at least one job title for Google Jobs.', 'err'); resetBtn(); return; }
+        if (!serpCountries.length) { addLog('Add at least one country for Google Jobs.', 'err'); resetBtn(); return; }
+        const serpLocations = serpCities.length ? serpCities : serpCountries;
+        jobCollection = await collectSerpJobs(serpQueries, serpLocations, serpCountries, (done, total, label) => {
+          addLog(`${label} ✓`, 'ok');
+          setProgress((done / total) * 40, `Fetching Google Jobs… ${done}/${total} queries`);
+        });
+      } else {
+        if (!queries.length)   { addLog('Add at least one job title.', 'err'); resetBtn(); return; }
+        if (!countries.length) { addLog('Add at least one country.', 'err'); resetBtn(); return; }
+        jobCollection = await collectJobs(queries, countries, resultsPerQuery, maxDaysOld, (done, total, label) => {
+          addLog(`${label} ✓`, 'ok');
+          setProgress((done / total) * 40, `Fetching Adzuna… ${done}/${total} queries`);
+        });
+      }
+      const { jobs, skipped } = jobCollection;
 
       addLog(`${jobs.length} unique jobs found (${skipped} excluded)`, 'info');
 
@@ -504,8 +577,20 @@
     });
   }
 
-  setupTagInput('queryInput',   queries,   'queriesWrap');
-  setupTagInput('countryInput', countries, 'countriesWrap');
+  setupTagInput('queryInput',      queries,       'queriesWrap');
+  setupTagInput('countryInput',    countries,     'countriesWrap');
+  setupTagInput('serpQueryInput',   serpQueries,   'serpQueriesWrap');
+  setupTagInput('serpCityInput',    serpCities,    'serpCitiesWrap');
+  setupTagInput('serpCountryInput', serpCountries, 'serpCountriesWrap');
+
+  function toggleSource() {
+    const isSerp = document.getElementById('srcSerp').checked;
+    document.getElementById('serpPanel').style.display    = isSerp ? 'block' : 'none';
+    // Hide Adzuna panels when SerpAPI is selected
+    document.querySelectorAll('.adzuna-panel').forEach(el => {
+      el.style.display = isSerp ? 'none' : 'block';
+    });
+  }
 
   // ── Helpers ─────────────────────────────────────────────────
   function setProgress(pct, label) {
