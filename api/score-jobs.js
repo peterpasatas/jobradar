@@ -26,7 +26,7 @@ export default async function handler(req, res) {
     const prompt = `You are a hiring evaluator acting as a senior recruiter. Your role is to apply strict, evidence-based screening — not to be encouraging or optimistic.
 
 ## CANDIDATE RESUME
-${resumeText.slice(0, 3500)}
+${resumeText.slice(0, 4200)}
 
 ## JOB POSTINGS
 ${postingsJson}
@@ -65,12 +65,24 @@ These DO NOT count as direct matches under any circumstances:
 
 Adjacent skills count ONLY toward nice-to-haves, never toward core requirements.
 
-### STEP 4 — Apply hard caps (apply ALL that are triggered)
-- Core match % < 40% → score cannot exceed 50
-- Core match % < 60% → score cannot exceed 60
-- Candidate seniority 2+ levels below required → score cannot exceed 45
-- Role requires software/backend engineering, cloud infrastructure, or data engineering, and candidate has no direct evidence → score cannot exceed 55
+CRITICAL — avoid keyword inflation and avoid keyword blindness:
+Do NOT match based on shared buzzwords or domain labels (e.g. "AI", "agentic", "automation"). Match based on what the candidate actually DID in their roles vs what this role actually REQUIRES them to DO day-to-day.
+
+Ask yourself: "Could this candidate walk into this role on day one and perform the core responsibilities?" — not "Do they use similar terminology?"
+
+A candidate who built a low-code assistant using Copilot Studio is NOT a match for a role requiring software engineering, API development, or ML infrastructure — even if both use the word "AI" or "agentic".
+
+Equally, do NOT penalise a candidate simply because the job title or industry language differs from their resume. If the functional responsibilities match — stakeholder management, project delivery, translating requirements, working with technical teams, driving adoption — that IS a strong match regardless of how the role is labelled or what sector it is in.
+
+For non-technical roles (consulting, operations, project delivery, stakeholder management, AI adoption): the following count as DIRECT matches when the job description requires them — stakeholder management, translating requirements, workflow design, project delivery, change management, driving adoption, facilitating workshops, managing workstreams, client relationship management. These are functional skills with direct evidence in the resume and should NOT be treated as adjacent.
+
+### STEP 4 — Apply hard caps
+Evaluate ALL caps below. Apply the MOST RESTRICTIVE one triggered (lowest ceiling wins).
 - No relevant experience in the role's core function → score cannot exceed 40
+- Candidate seniority 2+ levels below required → score cannot exceed 45
+- Core match % < 40% → score cannot exceed 50
+- Role requires software/backend engineering, cloud infrastructure, or data engineering, and candidate has no direct evidence → score cannot exceed 55
+- Core match % < 60% → score cannot exceed 60
 
 ### STEP 5 — Base scoring
 Starting from 100, work downward:
@@ -109,7 +121,7 @@ A score of 90+ should be exceptional and rare. If you are assigning 90+, you mus
 
 ## OUTPUT
 Return ONLY a valid JSON array with exactly ${jobs.length} objects. No markdown, no explanation:
-[{"index":integer,"extracted_title":string,"skills":string[],"experience_years":integer,"summary":"1-2 sentences","relevance_score":integer,"recommendation":"Apply"|"Maybe"|"Skip"}]
+[{"index":integer,"extracted_title":string,"skills":string[],"experience_years":integer,"summary":"1-2 sentences: role purpose, which core requirements the candidate meets directly, which critical ones are missing","relevance_score":integer,"recommendation":"Apply"|"Maybe"|"Skip"}]
 
 Evaluate all ${jobs.length} jobs now.`;
 
