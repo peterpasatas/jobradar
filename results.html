@@ -649,8 +649,8 @@ nav {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto auto 58px 1px 1fr;
   overflow: hidden;
 }
 
@@ -719,9 +719,6 @@ nav {
 }
 
 .term-log {
-  /* Fixed 3 lines only — overflow hidden clips the rest */
-  flex-shrink: 0;
-  height: 58px;
   overflow: hidden;
   padding: 4px 16px 6px;
   font-family: 'JetBrains Mono', monospace;
@@ -744,10 +741,8 @@ nav {
 .chat-panel {
   display: flex;
   flex-direction: column;
-  flex: 1;
   overflow: hidden;
   min-height: 0;
-  /* Takes all remaining space after terminal header + progress + 3-line log */
 }
 .chat-header {
   padding: 10px 14px 8px;
@@ -1171,7 +1166,6 @@ async function runSearch() {
     if (!jobs.length) { addLog('No jobs found. Adjust your search.', 'err'); resetBtn(); return; }
 
     setProgress(45, `Scoring ${jobs.length} jobs…`);
-    addLog(`Scoring with Gemini…`, 'info');
     // Single updating line for scoring progress — no per-job noise
     let scoringLogId = 'scoring-progress-line';
     const scored = await scoreJobsWithGemini(jobs, resume, (pct, done, total) => {
@@ -1373,8 +1367,12 @@ function addLog(msg, type = 'info') {
   const ts = new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
   row.innerHTML = `<span class="log-t">${ts}</span>&nbsp;<span class="log-${type}">${msg}</span>`;
   log.appendChild(row);
-  // Keep only last 3 lines
-  while (log.children.length > 3) log.removeChild(log.firstChild);
+  // Keep only last 3 lines — but never remove the scoring progress line
+  while (log.children.length > 3) {
+    const first = log.firstChild;
+    if (first && first.id === 'scoring-progress-line') break;
+    log.removeChild(first);
+  }
 }
 
 function updateScoringLine(id, pct, done, total) {
