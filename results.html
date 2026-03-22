@@ -793,9 +793,9 @@ nav {
     <input class="tag-input-inline" id="countryInput" placeholder="+ gb/de">
     <div class="cmd-sep"></div>
     <span class="cmd-label">Results</span>
-    <input type="number" class="num-inline" id="resultsPerQuery" value="50" min="1" max="50">
+    <input type="number" class="num-inline" id="resultsPerQuery" value="10" min="1" max="50">
     <span class="cmd-label">Days</span>
-    <input type="number" class="num-inline" id="maxDaysOld" value="15" min="1" max="90">
+    <input type="number" class="num-inline" id="maxDaysOld" value="1" min="1" max="90">
   </div>
 
   <!-- Google Jobs controls -->
@@ -852,11 +852,22 @@ nav {
       <div class="stat-chip maybe-chip" id="maybeCount"></div>
       <div class="stat-chip skip-chip"  id="skipCount"></div>
       <div class="stat-chip total-chip" id="totalCount"></div>
+
+      <!-- Location filter -->
+      <select id="filterLocation" onchange="applyFilters()" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:7px;color:rgba(240,242,255,0.55);font-family:'JetBrains Mono',monospace;font-size:11px;padding:5px 10px;outline:none;cursor:pointer;transition:all 0.18s;">
+        <option value="">All locations</option>
+      </select>
+
+      <!-- Platform filter -->
+      <select id="filterPlatform" onchange="applyFilters()" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:7px;color:rgba(240,242,255,0.55);font-family:'JetBrains Mono',monospace;font-size:11px;padding:5px 10px;outline:none;cursor:pointer;transition:all 0.18s;">
+        <option value="">All platforms</option>
+      </select>
+
       <div class="filter-bar" id="filterBar">
-        <button class="f-btn active" onclick="filterCards('all',this)">All</button>
-        <button class="f-btn" onclick="filterCards('Apply',this)">Apply</button>
-        <button class="f-btn" onclick="filterCards('Maybe',this)">Maybe</button>
-        <button class="f-btn" onclick="filterCards('Skip',this)">Skip</button>
+        <button class="f-btn active" onclick="setRecFilter('all',this)">All</button>
+        <button class="f-btn" onclick="setRecFilter('Apply',this)">Apply</button>
+        <button class="f-btn" onclick="setRecFilter('Maybe',this)">Maybe</button>
+        <button class="f-btn" onclick="setRecFilter('Skip',this)">Skip</button>
       </div>
     </div>
     <div class="cards-grid" id="cards">
@@ -1012,8 +1023,13 @@ async function runSearch() {
 
     setProgress(45, `Scoring ${jobs.length} jobs…`);
     addLog(`Scoring with Gemini…`, 'info');
-    const scored = await scoreJobsWithGemini(jobs, resume, msg => addLog(msg, 'info'));
-    addLog(`${scored.length} jobs scored ✓`, 'ok');
+    // Single updating line for scoring progress — no per-job noise
+    let scoringLogId = 'scoring-progress-line';
+    const scored = await scoreJobsWithGemini(jobs, resume, (pct, done, total) => {
+      updateScoringLine(scoringLogId, pct, done, total);
+      setProgress(45 + (pct * 0.45), `Scoring… ${pct}%`);
+    });
+    finaliseScoringLine(scoringLogId, scored.length);
 
     const indexMap = {};
     scored.forEach(s => { if (s?.index != null) indexMap[s.index] = s; });
@@ -1023,7 +1039,7 @@ async function runSearch() {
       const job = jobs[i], a = indexMap[i];
       if (!a) continue;
       const skills = Array.isArray(a.skills) ? a.skills : [];
-      rows.push({ user_id: userId, run_date: today, run_id: runId, job_id: job.id, title: a.extracted_title || job.title, company: job.company, location: a.location || job.location, summary: a.summary || '', extracted_skills: skills, experience_years: a.experience_years || 0, relevance_score: a.relevance_score || 0, recommendation: a.recommendation || 'Unknown', salary_min: job.salary_min, salary_max: job.salary_max, url: job.url, skills_arr: skills });
+      rows.push({ user_id: userId, run_date: today, run_id: runId, job_id: job.id, title: a.extracted_title || job.title, company: job.company, location: a.location || job.location, summary: a.summary || '', extracted_skills: skills, experience_years: a.experience_years || 0, relevance_score: a.relevance_score || 0, recommendation: a.recommendation || 'Unknown', salary_min: job.salary_min, salary_max: job.salary_max, url: job.url, via: job.via || job.source || '', skills_arr: skills });
     }
     rows.sort((a,b) => (b.relevance_score||0)-(a.relevance_score||0));
     allResults = rows;
@@ -1050,6 +1066,22 @@ function renderStats(results) {
   document.getElementById('maybeCount').textContent = `${maybe} Maybe`;
   document.getElementById('skipCount').textContent  = `${skip} Skip`;
   document.getElementById('totalCount').textContent = `${results.length} total`;
+
+  // Populate location filter
+  const locations = [...new Set(results.map(r => r.location).filter(Boolean))].sort();
+  const locSel = document.getElementById('filterLocation');
+  if (locSel) {
+    locSel.innerHTML = '<option value="">All locations</option>' +
+      locations.map(l => `<option value="${l}">${l}</option>`).join('');
+  }
+
+  // Populate platform filter from via field
+  const platforms = [...new Set(results.map(r => r.via || r.source).filter(Boolean))].sort();
+  const platSel = document.getElementById('filterPlatform');
+  if (platSel) {
+    platSel.innerHTML = '<option value="">All platforms</option>' +
+      platforms.map(p => `<option value="${p}">${p}</option>`).join('');
+  }
 }
 
 function renderCards(results) {
@@ -1101,10 +1133,30 @@ function renderCards(results) {
   }).join('');
 }
 
-function filterCards(type, btn) {
+let activeRecFilter = 'all';
+
+function setRecFilter(type, btn) {
+  activeRecFilter = type;
   document.querySelectorAll('.f-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  renderCards(type === 'all' ? allResults : allResults.filter(r => r.recommendation === type));
+  applyFilters();
+}
+
+function applyFilters() {
+  const loc      = document.getElementById('filterLocation')?.value || '';
+  const platform = document.getElementById('filterPlatform')?.value || '';
+  let filtered = allResults;
+
+  if (activeRecFilter !== 'all') {
+    filtered = filtered.filter(r => r.recommendation === activeRecFilter);
+  }
+  if (loc) {
+    filtered = filtered.filter(r => (r.location || '').toLowerCase().includes(loc.toLowerCase()));
+  }
+  if (platform) {
+    filtered = filtered.filter(r => (r.via || r.source || '').toLowerCase().includes(platform.toLowerCase()));
+  }
+  renderCards(filtered);
 }
 
 // ── INLINE TAG INPUTS ────────────────────────────
@@ -1172,6 +1224,28 @@ function addLog(msg, type = 'info') {
   row.innerHTML = `<span class="log-t">${ts}</span><span class="log-${type}">${msg}</span>`;
   log.appendChild(row);
   log.scrollTop = log.scrollHeight;
+}
+
+function updateScoringLine(id, pct, done, total) {
+  const log = document.getElementById('progressLog');
+  let line = document.getElementById(id);
+  if (!line) {
+    line = document.createElement('div');
+    line.className = 'log-row';
+    line.id = id;
+    log.appendChild(line);
+  }
+  const bar = '█'.repeat(Math.floor(pct / 5)) + '░'.repeat(20 - Math.floor(pct / 5));
+  line.innerHTML = `<span class="log-t">${new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span><span class="log-info">Scoring  ${bar}  ${pct}%  (${done}/${total})</span>`;
+  log.scrollTop = log.scrollHeight;
+}
+
+function finaliseScoringLine(id, count) {
+  const line = document.getElementById(id);
+  if (line) {
+    const bar = '█'.repeat(20);
+    line.innerHTML = `<span class="log-t">${new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span><span class="log-ok">Scoring  ${bar}  100%  (${count}/${count}) ✓</span>`;
+  }
 }
 
 function resetBtn() {
