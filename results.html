@@ -1235,8 +1235,10 @@ function updateScoringLine(id, pct, done, total) {
     line.id = id;
     log.appendChild(line);
   }
-  const bar = '█'.repeat(Math.floor(pct / 5)) + '░'.repeat(20 - Math.floor(pct / 5));
-  line.innerHTML = `<span class="log-t">${new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span><span class="log-info">Scoring  ${bar}  ${pct}%  (${done}/${total})</span>`;
+  const filled = Math.floor(pct / 5);
+  const bar = '█'.repeat(filled) + '░'.repeat(20 - filled);
+  const ts = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  line.innerHTML = `<span class="log-t">${ts}</span>&nbsp;&nbsp;<span class="log-info">scoring &nbsp;${bar}&nbsp; ${String(pct).padStart(3,' ')}% &nbsp;(${done}/${total})</span>`;
   log.scrollTop = log.scrollHeight;
 }
 
@@ -1244,7 +1246,9 @@ function finaliseScoringLine(id, count) {
   const line = document.getElementById(id);
   if (line) {
     const bar = '█'.repeat(20);
-    line.innerHTML = `<span class="log-t">${new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span><span class="log-ok">Scoring  ${bar}  100%  (${count}/${count}) ✓</span>`;
+    const ts2 = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const fullBar = '█'.repeat(20);
+    line.innerHTML = `<span class="log-t">${ts2}</span>&nbsp;&nbsp;<span class="log-ok">scoring &nbsp;${fullBar}&nbsp; 100% &nbsp;(${count}/${count}) ✓</span>`;
   }
 }
 
