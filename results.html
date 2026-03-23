@@ -1793,9 +1793,8 @@ document.getElementById('schedSerpCountryInput').oninput = () => filterCountryDr
 async function saveSchedule() {
   const source = document.querySelector('input[name="schedSource"]:checked').value;
   const time = document.getElementById('schedTime').value;
-  const format = document.querySelector('input[name="schedFormat"]:checked').value;
 
-  let config = { source, time, format, email: document.getElementById('navEmail').textContent };
+  let config = { source, time, format: 'apply_plus_top_maybe', email: document.getElementById('navEmail').textContent };
 
   if (source === 'adzuna') {
     if (!schedQueries.length)   { showSchedStatus('Add at least one job title.', 'err'); return; }
