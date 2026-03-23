@@ -785,6 +785,10 @@ nav {
 </head>
 <body>
 
+<!-- Country dropdowns — portal-mounted outside cmd-bar to avoid overflow clipping -->
+<div class="country-dropdown" id="countryDropdownAdzuna"></div>
+<div class="country-dropdown" id="countryDropdownSerp"></div>
+
 <nav>
   <a href="results.html" class="logo">Job<span>Radar</span></a>
   <div class="nav-div"></div>
@@ -810,10 +814,7 @@ nav {
     <div class="cmd-sep"></div>
     <span class="cmd-label">Countries</span>
     <div class="tags-inline" id="countriesInline"></div>
-    <div class="country-picker" id="countryPickerAdzuna">
-      <input class="tag-input-inline" id="countryInput" placeholder="+ country" autocomplete="off" oninput="filterCountryDropdown('countryInput','countryDropdownAdzuna')" onfocus="showCountryDropdown('countryDropdownAdzuna')" onblur="hideCountryDropdown('countryDropdownAdzuna', 300)">
-      <div class="country-dropdown" id="countryDropdownAdzuna"></div>
-    </div>
+    <input class="tag-input-inline" id="countryInput" placeholder="+ country" autocomplete="off" oninput="filterCountryDropdown('countryInput','countryDropdownAdzuna')" onfocus="showCountryDropdown('countryInput','countryDropdownAdzuna')" onblur="hideCountryDropdown('countryDropdownAdzuna',200)">
     <div class="cmd-sep"></div>
     <span class="cmd-label">Results</span>
     <input type="number" class="num-inline" id="resultsPerQuery" value="10" min="1" max="50">
@@ -832,10 +833,7 @@ nav {
     <div class="cmd-sep"></div>
     <span class="cmd-label">Countries</span>
     <div class="tags-inline" id="serpCountriesInline"></div>
-    <div class="country-picker" id="countryPickerSerp">
-      <input class="tag-input-inline" id="serpCountryInput" placeholder="+ country" autocomplete="off" oninput="filterCountryDropdown('serpCountryInput','countryDropdownSerp')" onfocus="showCountryDropdown('countryDropdownSerp')" onblur="hideCountryDropdown('countryDropdownSerp', 300)">
-      <div class="country-dropdown" id="countryDropdownSerp"></div>
-    </div>
+    <input class="tag-input-inline" id="serpCountryInput" placeholder="+ country" autocomplete="off" oninput="filterCountryDropdown('serpCountryInput','countryDropdownSerp')" onfocus="showCountryDropdown('serpCountryInput','countryDropdownSerp')" onblur="hideCountryDropdown('countryDropdownSerp',200)">
     <div class="cmd-sep"></div>
     <span class="cmd-label">Posted</span>
     <select id="serpDateRange" class="num-inline" style="width:auto;">
@@ -1412,26 +1410,34 @@ const SERP_COUNTRIES = [
   { name: 'Singapore' },
 ];
 
-function buildCountryDropdown(dropdownId, countryList, inputId, arr, containerId) {
+function positionDropdown(inputId, dropdownId) {
+  const input = document.getElementById(inputId);
   const dd = document.getElementById(dropdownId);
-  dd.innerHTML = countryList.map(c => {
-    const value = c.code || c.name;
-    return `<div class="country-option" onmousedown="selectCountry('${value}','${c.name}','${inputId}','${dropdownId}','${containerId}')">${c.name}</div>`;
-  }).join('');
+  const rect = input.getBoundingClientRect();
+  dd.style.top  = (rect.bottom + 4) + 'px';
+  dd.style.left = rect.left + 'px';
+  dd.style.width = '220px';
 }
 
-function showCountryDropdown(dropdownId) {
+function populateDropdown(dropdownId, countryList, inputId, filter) {
+  const isAdzuna = dropdownId === 'countryDropdownAdzuna';
+  const containerId = isAdzuna ? 'countriesInline' : 'serpCountriesInline';
+  const filtered = filter ? countryList.filter(c => c.name.toLowerCase().includes(filter.toLowerCase())) : countryList;
+  const dd = document.getElementById(dropdownId);
+  dd.innerHTML = filtered.length
+    ? filtered.map(c => {
+        const value = c.code || c.name;
+        return `<div class="country-option" onmousedown="selectCountry('${value}','${c.name}','${inputId}','${dropdownId}','${containerId}')">${c.name}</div>`;
+      }).join('')
+    : `<div class="country-option" style="color:var(--text-3);cursor:default;">No results</div>`;
+}
+
+function showCountryDropdown(inputId, dropdownId) {
   const isAdzuna = dropdownId === 'countryDropdownAdzuna';
   const countryList = isAdzuna ? ADZUNA_COUNTRIES : SERP_COUNTRIES;
-  const inputId = isAdzuna ? 'countryInput' : 'serpCountryInput';
-  const containerId = isAdzuna ? 'countriesInline' : 'serpCountriesInline';
-  buildCountryDropdown(dropdownId, countryList, inputId, isAdzuna ? countries : serpCountries, containerId);
-  const input = document.getElementById(inputId);
-  const rect = input.getBoundingClientRect();
-  const dd = document.getElementById(dropdownId);
-  dd.style.top  = (rect.bottom + 6) + 'px';
-  dd.style.left = rect.left + 'px';
-  dd.classList.add('open');
+  populateDropdown(dropdownId, countryList, inputId, '');
+  positionDropdown(inputId, dropdownId);
+  document.getElementById(dropdownId).classList.add('open');
 }
 
 function hideCountryDropdown(dropdownId, delay = 0) {
@@ -1439,23 +1445,12 @@ function hideCountryDropdown(dropdownId, delay = 0) {
 }
 
 function filterCountryDropdown(inputId, dropdownId) {
-  const val = document.getElementById(inputId).value.toLowerCase();
+  const val = document.getElementById(inputId).value;
   const isAdzuna = dropdownId === 'countryDropdownAdzuna';
   const countryList = isAdzuna ? ADZUNA_COUNTRIES : SERP_COUNTRIES;
-  const containerId = isAdzuna ? 'countriesInline' : 'serpCountriesInline';
-  const filtered = val ? countryList.filter(c => c.name.toLowerCase().includes(val) || (c.code && c.code.includes(val))) : countryList;
-  const dd = document.getElementById(dropdownId);
-  dd.innerHTML = filtered.map(c => {
-    const value = c.code || c.name;
-    return `<div class="country-option" onmousedown="selectCountry('${value}','${c.name}','${inputId}','${dropdownId}','${containerId}')">${c.name}</div>`;
-  }).join('');
-  if (!dd.classList.contains('open')) {
-    const input = document.getElementById(inputId);
-    const rect = input.getBoundingClientRect();
-    dd.style.top  = (rect.bottom + 6) + 'px';
-    dd.style.left = rect.left + 'px';
-    dd.classList.add('open');
-  }
+  populateDropdown(dropdownId, countryList, inputId, val);
+  positionDropdown(inputId, dropdownId);
+  document.getElementById(dropdownId).classList.add('open');
 }
 
 function selectCountry(value, display, inputId, dropdownId, containerId) {
