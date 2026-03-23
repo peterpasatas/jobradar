@@ -1560,10 +1560,21 @@ function renderInlineTagsWithDisplay(containerId, arr, inputId, displayMap) {
 }
 
 function removeInlineTag(containerId, inputId, idx) {
-  const arrMap = { 'queriesInline': queries, 'countriesInline': countries, 'serpQueriesInline': serpQueries, 'serpCitiesInline': serpCities, 'serpCountriesInline': serpCountries };
+  const arrMap = {
+    'queriesInline': queries,
+    'countriesInline': countries,
+    'serpQueriesInline': serpQueries,
+    'serpCitiesInline': serpCities,
+    'serpCountriesInline': serpCountries,
+    'schedQueriesInline': schedQueries,
+    'schedCountriesInline': schedCountries,
+    'schedSerpQueriesInline': schedSerpQueries,
+    'schedSerpCitiesInline': schedSerpCities,
+    'schedSerpCountriesInline': schedSerpCountries,
+  };
   const arr = arrMap[containerId]; if (!arr) return;
   arr.splice(idx, 1);
-  const displayMap = containerId === 'countriesInline' ? COUNTRY_DISPLAY : null;
+  const displayMap = (containerId === 'countriesInline' || containerId === 'schedCountriesInline') ? COUNTRY_DISPLAY : null;
   renderInlineTags(containerId, arr, inputId, displayMap);
 }
 
@@ -1741,6 +1752,11 @@ setupInlineTagInput('schedSerpCityInput',   schedSerpCities,   'schedSerpCitiesI
 function schedAddCountry(value, display, inputId, dropdownId, containerId) {
   const isAdzuna = dropdownId === 'countryDropdownSched';
   const arr = isAdzuna ? schedCountries : schedSerpCountries;
+  if (arr.length >= 2) {
+    showSchedStatus('Maximum 2 countries allowed.', 'err');
+    document.getElementById(dropdownId).classList.remove('open');
+    return;
+  }
   if (!arr.includes(value)) {
     arr.push(value);
     renderInlineTags(containerId, arr, inputId, isAdzuna ? COUNTRY_DISPLAY : null);
@@ -1905,6 +1921,10 @@ function filterCountryDropdown(inputId, dropdownId) {
 function selectCountry(value, display, inputId, dropdownId, containerId) {
   const isAdzuna = dropdownId === 'countryDropdownAdzuna';
   const arr = isAdzuna ? countries : serpCountries;
+  if (arr.length >= 2) {
+    document.getElementById(dropdownId).classList.remove('open');
+    return;
+  }
   if (!arr.includes(value)) {
     arr.push(value);
     renderInlineTagsWithDisplay(containerId, arr, inputId, isAdzuna ? COUNTRY_DISPLAY : null);
