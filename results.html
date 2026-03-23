@@ -1478,7 +1478,8 @@ async function runSearch() {
 
     setProgress(95, 'Saving…');
     const dbRows = rows.map(({skills_arr,...r}) => r);
-    await sb.from('job_results').insert(dbRows);
+    const { error: insertError } = await sb.from('job_results').insert(dbRows);
+    if (insertError) throw new Error(`DB save failed: ${insertError.message}`);
     addLog(`Saved ${rows.length} results ✓`, 'ok');
     setProgress(100, `Done — ${rows.length} results`);
 
