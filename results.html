@@ -1396,14 +1396,13 @@ async function savePreferences() {
 }
 
 async function loadHistory() {
-  const { data } = await sb.from('job_results').select('run_id,run_date,created_at').eq('user_id', userId).order('created_at', { ascending: false });
+  const { data } = await sb.from('job_results').select('run_id,run_date,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(500);
   if (!data?.length) return;
   const seen = new Set(), runs = [];
   for (const r of data) { const key = r.run_id || r.run_date; if (!seen.has(key)) { seen.add(key); runs.push({ run_id: key, run_date: r.run_date, created_at: r.created_at }); } }
-  runs.splice(15);
-  const total = runs.length;
+  runs.splice(10);
   const sel = document.getElementById('historySelect');
-  sel.innerHTML = '<option value="">Select run…</option>' + runs.map((r, i) => `<option value="${r.run_id}">Run ${total-i} — ${formatDate(r.run_date)} ${formatTime(r.created_at)}</option>`).join('');
+  sel.innerHTML = '<option value="">Last 10 runs…</option>' + runs.map(r => `<option value="${r.run_id}">${formatDate(r.run_date)} · ${formatTime(r.created_at)}</option>`).join('');
   document.getElementById('historyBar').style.display = 'flex';
 }
 
