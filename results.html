@@ -24,6 +24,7 @@
   --skip: #cc3333;
   --nav-h: 60px;
   --cmd-h: 52px;
+  --ribbon-h: 40px;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -36,10 +37,46 @@ body {
   min-height: 100vh;
 }
 
+/* ── MENU RIBBON ─────────────────────────────────── */
+.menu-ribbon {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--ribbon-h);
+  background: var(--text);
+  display: flex;
+  align-items: center;
+  padding: 0 32px;
+  gap: 4px;
+  z-index: 200;
+}
+.ribbon-logo {
+  font-family: 'DM Serif Display', serif;
+  font-size: 16px;
+  color: #fff;
+  text-decoration: none;
+  letter-spacing: -0.3px;
+  margin-right: 20px;
+  white-space: nowrap;
+}
+.ribbon-logo span { color: var(--accent); }
+.ribbon-tab {
+  padding: 5px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.55);
+  text-decoration: none;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.ribbon-tab:hover { color: #fff; background: rgba(255,255,255,0.08); }
+.ribbon-tab.active { color: #fff; background: rgba(255,255,255,0.12); }
+.ribbon-right-placeholder { margin-left: auto; }
+
 /* ── NAV ─────────────────────────────────────────── */
 nav {
   position: fixed;
-  top: 0; left: 0; right: 0;
+  top: var(--ribbon-h); left: 0; right: 0;
   height: var(--nav-h);
   display: flex;
   align-items: center;
@@ -121,7 +158,7 @@ nav {
 /* ── COMMAND BAR ─────────────────────────────────── */
 .cmd-bar {
   position: fixed;
-  top: var(--nav-h);
+  top: calc(var(--ribbon-h) + var(--nav-h));
   left: 0; right: 0;
   height: var(--cmd-h);
   background: rgba(255,255,255,0.95);
@@ -227,7 +264,7 @@ nav {
 
 .resume-drawer {
   position: fixed;
-  top: calc(var(--nav-h) + var(--cmd-h));
+  top: calc(var(--ribbon-h) + var(--nav-h) + var(--cmd-h));
   right: 0;
   width: 360px;
   background: #fff;
@@ -284,7 +321,7 @@ nav {
 
 /* ── LAYOUT ──────────────────────────────────────── */
 .main {
-  padding-top: calc(var(--nav-h) + var(--cmd-h) + 28px);
+  padding-top: calc(var(--ribbon-h) + var(--nav-h) + var(--cmd-h) + 28px);
   padding-left: 32px;
   padding-right: 32px;
   padding-bottom: 60px;
@@ -524,8 +561,8 @@ nav {
 /* ── TERMINAL ────────────────────────────────────── */
 .terminal {
   position: sticky;
-  top: calc(var(--nav-h) + var(--cmd-h) + 28px);
-  height: calc(100vh - var(--nav-h) - var(--cmd-h) - 56px);
+  top: calc(var(--ribbon-h) + var(--nav-h) + var(--cmd-h) + 28px);
+  height: calc(100vh - var(--ribbon-h) - var(--nav-h) - var(--cmd-h) - 56px);
   background: #fafafa;
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -1004,6 +1041,14 @@ nav {
 <!-- Country dropdowns — portal-mounted outside cmd-bar to avoid overflow clipping -->
 <div class="country-dropdown" id="countryDropdownAdzuna"></div>
 <div class="country-dropdown" id="countryDropdownSerp"></div>
+
+<!-- ── MENU RIBBON ──────────────────────────────── -->
+<div class="menu-ribbon">
+  <a href="results.html" class="ribbon-logo">Job<span>Radar</span></a>
+  <a href="results.html" class="ribbon-tab active">Job Search</a>
+  <a href="thought-leader.html" class="ribbon-tab">Thought Leader</a>
+  <div class="ribbon-right-placeholder"></div>
+</div>
 
 <nav>
   <a href="results.html" class="logo">Job<span>Radar</span></a>

@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JobRadar — Thought Leader</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<style>
+:root {
+  --bg: #ffffff;
+  --surface: #fafafa;
+  --border: #e8e8e8;
+  --border-strong: #d0d0d0;
+  --text: #111111;
+  --text-2: #555555;
+  --text-3: #999999;
+  --accent: #00a36c;
+  --accent-light: #f0faf5;
+  --accent-border: #b8e8d0;
+  --nav-h: 60px;
+  --ribbon-h: 40px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; min-height: 100vh; }
+
+/* ── MENU RIBBON ──────────────────────────────────── */
+.menu-ribbon {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--ribbon-h);
+  background: var(--text);
+  display: flex;
+  align-items: center;
+  padding: 0 32px;
+  gap: 4px;
+  z-index: 200;
+}
+.ribbon-logo {
+  font-family: 'DM Serif Display', serif;
+  font-size: 16px;
+  color: #fff;
+  text-decoration: none;
+  letter-spacing: -0.3px;
+  margin-right: 20px;
+  white-space: nowrap;
+}
+.ribbon-logo span { color: var(--accent); }
+.ribbon-tab {
+  padding: 5px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.55);
+  text-decoration: none;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.ribbon-tab:hover { color: #fff; background: rgba(255,255,255,0.08); }
+.ribbon-tab.active { color: #fff; background: rgba(255,255,255,0.12); }
+.ribbon-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.ribbon-email { font-family: 'DM Mono', monospace; font-size: 11px; color: rgba(255,255,255,0.4); }
+.ribbon-signout {
+  font-size: 12px; font-weight: 500;
+  color: rgba(255,255,255,0.5);
+  background: none; border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 6px; padding: 4px 12px;
+  cursor: pointer; transition: all 0.15s;
+  font-family: 'DM Sans', sans-serif;
+}
+.ribbon-signout:hover { color: #fff; border-color: rgba(255,255,255,0.35); }
+
+/* ── FILTER BAR ───────────────────────────────────── */
+.filter-bar {
+  position: fixed;
+  top: var(--ribbon-h); left: 0; right: 0;
+  height: var(--nav-h);
+  background: rgba(255,255,255,0.97);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 10px;
+  z-index: 100;
+}
+.filter-label { font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--text-3); white-space: nowrap; margin-right: 4px; }
+.filter-input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  padding: 6px 12px;
+  outline: none;
+  transition: border-color 0.15s;
+  min-width: 160px;
+}
+.filter-input:focus { border-color: var(--accent); }
+.filter-select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text-2);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  padding: 6px 10px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.filter-select:focus { border-color: var(--accent); }
+.filter-sep { width: 1px; height: 18px; background: var(--border); margin: 0 4px; }
+.fetch-btn {
+  padding: 7px 18px;
+  background: var(--text);
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  margin-left: auto;
+}
+.fetch-btn:hover { background: #000; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+.fetch-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* ── 3-COLUMN LAYOUT ──────────────────────────────── */
+.tl-layout {
+  position: fixed;
+  top: calc(var(--ribbon-h) + var(--nav-h));
+  bottom: 0; left: 0; right: 0;
+  display: grid;
+  grid-template-columns: 320px 1fr 300px;
+  overflow: hidden;
+}
+
+/* ── NEWS PANEL (LEFT) ────────────────────────────── */
+.news-panel {
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  background: var(--bg);
+}
+.news-panel::-webkit-scrollbar { width: 3px; }
+.news-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.news-header {
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0;
+  background: rgba(255,255,255,0.97);
+  backdrop-filter: blur(8px);
+  z-index: 10;
+}
+.news-header-title { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text-3); }
+.news-count { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
+.news-list { padding: 8px 0; }
+
+.news-card {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.news-card:hover { background: var(--surface); }
+.news-card.selected { background: var(--accent-light); border-left: 3px solid var(--accent); }
+
+.news-source {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.5px;
+  text-transform: uppercase; color: var(--accent);
+  margin-bottom: 5px;
+}
+.news-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 14px; line-height: 1.4;
+  color: var(--text);
+  margin-bottom: 5px;
+}
+.news-desc {
+  font-size: 12px; color: var(--text-3); line-height: 1.5;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  margin-bottom: 6px;
+}
+.news-meta {
+  display: flex; align-items: center; gap: 8px;
+  font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-3);
+}
+.news-read-link {
+  font-size: 11px; font-weight: 600; color: var(--accent);
+  text-decoration: none; margin-left: auto;
+  transition: opacity 0.15s;
+}
+.news-read-link:hover { opacity: 0.7; }
+
+.news-empty {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--text-3);
+}
+.news-empty-icon { font-size: 28px; margin-bottom: 10px; }
+.news-empty-title { font-size: 14px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; }
+.news-empty-sub { font-size: 12px; line-height: 1.6; }
+
+.news-loading { padding: 32px 24px; text-align: center; color: var(--text-3); font-size: 13px; }
+.news-spinner { width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.65s linear infinite; margin: 0 auto 10px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── CHAT PANEL (CENTRE) ──────────────────────────── */
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  background: #fafafa;
+  border-right: 1px solid var(--border);
+}
+
+.chat-panel-header {
+  padding: 16px 24px 14px;
+  border-bottom: 1px solid var(--border);
+  background: #fff;
+  flex-shrink: 0;
+}
+.chat-panel-title { font-size: 15px; font-weight: 600; color: var(--text); }
+.chat-panel-sub { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+
+.chat-panel-context {
+  padding: 8px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--accent-light);
+  flex-shrink: 0;
+  display: none;
+}
+.chat-panel-context.visible { display: block; }
+.chat-context-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 600; color: var(--accent);
+}
+.chat-context-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+
+.chat-panel-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.chat-panel-messages::-webkit-scrollbar { width: 3px; }
+.chat-panel-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.chat-msg {
+  font-size: 13px; line-height: 1.65;
+  padding: 11px 14px;
+  border-radius: 10px;
+  max-width: 82%;
+  animation: msgIn 0.18s ease;
+}
+@keyframes msgIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+.chat-msg.assistant {
+  background: #fff;
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  align-self: flex-start;
+  border-radius: 4px 10px 10px 10px;
+}
+.chat-msg.assistant p { margin-bottom: 8px; }
+.chat-msg.assistant p:last-child { margin-bottom: 0; }
+.chat-msg.assistant strong { color: var(--text); font-weight: 600; }
+.chat-msg.user {
+  background: var(--text);
+  color: #fff;
+  align-self: flex-end;
+  border-radius: 10px 4px 10px 10px;
+  font-weight: 500;
+}
+.chat-msg.thinking {
+  background: #fff;
+  border: 1px solid var(--border);
+  color: var(--text-3);
+  align-self: flex-start;
+  font-style: italic;
+  font-size: 12px;
+  border-radius: 4px 10px 10px 10px;
+  animation: typingPulse 1.4s ease-in-out infinite;
+}
+@keyframes typingPulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+.chat-suggestions {
+  padding: 0 24px 12px;
+  display: flex; flex-direction: column; gap: 5px;
+  flex-shrink: 0;
+}
+.suggestion-chip {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-2);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  padding: 8px 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.suggestion-chip:hover { border-color: var(--text); color: var(--text); }
+
+.chat-panel-input-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 14px 24px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  background: #fff;
+}
+.chat-panel-input {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  padding: 10px 14px;
+  outline: none;
+  transition: border-color 0.15s;
+  resize: none;
+}
+.chat-panel-input:focus { border-color: var(--accent); }
+.chat-panel-input::placeholder { color: var(--text-3); }
+.chat-send-btn {
+  width: 36px; height: 36px;
+  background: var(--text);
+  border: none; border-radius: 8px;
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+  transition: all 0.15s;
+}
+.chat-send-btn:hover { background: #000; }
+.chat-send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ── LINKEDIN PANEL (RIGHT) ───────────────────────── */
+.linkedin-panel {
+  overflow-y: auto;
+  background: var(--bg);
+}
+.linkedin-panel::-webkit-scrollbar { width: 3px; }
+.linkedin-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.linkedin-header {
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.linkedin-header-title { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text-3); }
+
+.linkedin-placeholder {
+  padding: 32px 20px;
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center; gap: 16px;
+}
+.linkedin-logo-wrap {
+  width: 56px; height: 56px;
+  background: #0a66c2;
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; font-weight: 700; color: #fff;
+  font-family: 'DM Serif Display', serif;
+  letter-spacing: -1px;
+}
+.linkedin-placeholder-title {
+  font-size: 15px; font-weight: 600; color: var(--text); line-height: 1.4;
+}
+.linkedin-placeholder-sub {
+  font-size: 12px; color: var(--text-3); line-height: 1.6;
+}
+.linkedin-connect-btn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 20px;
+  background: #0a66c2;
+  color: #fff;
+  border: none; border-radius: 8px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  width: 100%;
+  justify-content: center;
+}
+.linkedin-connect-btn:hover { background: #0958a8; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(10,102,194,0.3); }
+
+.linkedin-divider { width: 100%; height: 1px; background: var(--border); margin: 8px 0; }
+
+.linkedin-feature-list { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+.linkedin-feature {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-align: left;
+}
+.linkedin-feature-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.linkedin-feature-text { font-size: 12px; color: var(--text-2); line-height: 1.5; }
+.linkedin-feature-text strong { color: var(--text); font-weight: 600; display: block; margin-bottom: 2px; }
+
+.linkedin-coming-soon {
+  display: inline-block;
+  padding: 3px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-3);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+</style>
+</head>
+<body>
+
+<!-- ── MENU RIBBON ────────────────────────────────── -->
+<div class="menu-ribbon">
+  <a href="results.html" class="ribbon-logo">Job<span>Radar</span></a>
+  <a href="results.html" class="ribbon-tab">Job Search</a>
+  <a href="thought-leader.html" class="ribbon-tab active">Thought Leader</a>
+  <div class="ribbon-right">
+    <span class="ribbon-email" id="ribbonEmail"></span>
+    <button class="ribbon-signout" onclick="signOut()">Sign out</button>
+  </div>
+</div>
+
+<!-- ── FILTER BAR ─────────────────────────────────── -->
+<div class="filter-bar">
+  <span class="filter-label">Topic</span>
+  <input class="filter-input" id="filterTopic" placeholder="e.g. AI, consulting, pharma…" onkeydown="if(event.key==='Enter') fetchNews()">
+  <div class="filter-sep"></div>
+  <span class="filter-label">Sector</span>
+  <select class="filter-select" id="filterSector">
+    <option value="">All sectors</option>
+    <option value="technology">Technology</option>
+    <option value="business">Business</option>
+    <option value="science">Science</option>
+    <option value="health">Health</option>
+    <option value="general">General</option>
+  </select>
+  <div class="filter-sep"></div>
+  <span class="filter-label">Country</span>
+  <select class="filter-select" id="filterCountry">
+    <option value="gb">United Kingdom</option>
+    <option value="us">United States</option>
+    <option value="de">Germany</option>
+    <option value="fr">France</option>
+    <option value="au">Australia</option>
+  </select>
+  <button class="fetch-btn" id="fetchBtn" onclick="fetchNews()">Fetch News</button>
+</div>
+
+<!-- ── 3-COLUMN LAYOUT ────────────────────────────── -->
+<div class="tl-layout">
+
+  <!-- LEFT: News Feed -->
+  <div class="news-panel" id="newsPanel">
+    <div class="news-header">
+      <div class="news-header-title">Latest News</div>
+      <div class="news-count" id="newsCount">—</div>
+    </div>
+    <div class="news-list" id="newsList">
+      <div class="news-empty">
+        <div class="news-empty-icon">📰</div>
+        <div class="news-empty-title">No articles yet</div>
+        <div class="news-empty-sub">Set your filters above and click Fetch News to load articles.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTRE: Thought Leader Chat -->
+  <div class="chat-panel">
+    <div class="chat-panel-header">
+      <div class="chat-panel-title">Thought Leader Agent</div>
+      <div class="chat-panel-sub">Ask about industry trends, career positioning, or any article on the left.</div>
+    </div>
+    <div class="chat-panel-context" id="chatContext">
+      <span class="chat-context-pill">
+        <span class="chat-context-dot"></span>
+        <span id="chatContextLabel">Context loaded</span>
+      </span>
+    </div>
+    <div class="chat-panel-messages" id="tlChatMessages">
+      <div class="chat-msg assistant">
+        <p>Hello! I'm your Thought Leader Agent. I can help you:</p>
+        <p>• Discuss trends from the news articles on the left<br>• Position your experience against industry developments<br>• Identify emerging opportunities in your field<br>• Sharpen your professional narrative</p>
+        <p>Fetch some articles and ask me anything.</p>
+      </div>
+    </div>
+    <div class="chat-suggestions" id="tlSuggestions">
+      <button class="suggestion-chip" onclick="sendSuggestion(this)">What are the key trends in these articles?</button>
+      <button class="suggestion-chip" onclick="sendSuggestion(this)">How does this news affect my job search?</button>
+      <button class="suggestion-chip" onclick="sendSuggestion(this)">What should I be posting about on LinkedIn?</button>
+    </div>
+    <div class="chat-panel-input-row">
+      <input class="chat-panel-input" id="tlChatInput" placeholder="Ask about trends, your positioning, or any article…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendTlChat();}">
+      <button class="chat-send-btn" id="tlSendBtn" onclick="sendTlChat()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- RIGHT: LinkedIn Panel -->
+  <div class="linkedin-panel">
+    <div class="linkedin-header">
+      <div class="linkedin-header-title">LinkedIn</div>
+    </div>
+    <div class="linkedin-placeholder">
+      <div class="linkedin-logo-wrap">in</div>
+      <div class="linkedin-placeholder-title">Connect your LinkedIn profile</div>
+      <div class="linkedin-placeholder-sub">See your profile, network activity, and connections — all in one place alongside your news feed.</div>
+      <button class="linkedin-connect-btn" onclick="connectLinkedIn()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+        Connect LinkedIn
+      </button>
+      <div class="linkedin-divider"></div>
+      <div class="linkedin-feature-list">
+        <div class="linkedin-feature">
+          <div class="linkedin-feature-icon">👤</div>
+          <div class="linkedin-feature-text">
+            <strong>Profile Overview</strong>
+            View your headline, connections, and recent activity.
+            <span class="linkedin-coming-soon">Coming soon</span>
+          </div>
+        </div>
+        <div class="linkedin-feature">
+          <div class="linkedin-feature-icon">📊</div>
+          <div class="linkedin-feature-text">
+            <strong>Profile Strength</strong>
+            Get AI suggestions to improve your LinkedIn based on your CV.
+            <span class="linkedin-coming-soon">Coming soon</span>
+          </div>
+        </div>
+        <div class="linkedin-feature">
+          <div class="linkedin-feature-icon">🔔</div>
+          <div class="linkedin-feature-text">
+            <strong>Network Alerts</strong>
+            See when connections move to relevant companies.
+            <span class="linkedin-coming-soon">Coming soon</span>
+          </div>
+        </div>
+        <div class="linkedin-feature">
+          <div class="linkedin-feature-icon">✍️</div>
+          <div class="linkedin-feature-text">
+            <strong>Post Drafts</strong>
+            Generate thought leadership posts from today's news.
+            <span class="linkedin-coming-soon">Coming soon</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── AUTH ───────────────────────────────────────────
+const sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON);
+let userId = null, userEmail = null, userResume = null;
+let tlChatHistory = [];
+let loadedArticles = [];
+let selectedArticle = null;
+
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { window.location.href = 'index.html'; return; }
+  userId    = session.user.id;
+  userEmail = session.user.email;
+  document.getElementById('ribbonEmail').textContent = userEmail;
+
+  // Load resume for chat context
+  const { data: profile } = await sb.from('profiles').select('resume_text').eq('id', userId).single();
+  if (profile?.resume_text) userResume = profile.resume_text;
+  updateChatContext();
+
+  // Auto-fetch on load with defaults
+  fetchNews();
+})();
+
+async function signOut() {
+  await sb.auth.signOut();
+  window.location.href = 'index.html';
+}
+
+// ── NEWS FETCH ─────────────────────────────────────
+async function fetchNews() {
+  const topic    = document.getElementById('filterTopic').value.trim();
+  const sector   = document.getElementById('filterSector').value;
+  const country  = document.getElementById('filterCountry').value;
+  const fetchBtn = document.getElementById('fetchBtn');
+
+  fetchBtn.disabled = true;
+  fetchBtn.textContent = 'Fetching…';
+
+  document.getElementById('newsList').innerHTML = `
+    <div class="news-loading">
+      <div class="news-spinner"></div>
+      Loading articles…
+    </div>`;
+  document.getElementById('newsCount').textContent = '—';
+
+  try {
+    const res = await fetch('/api/fetch-news', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: topic || null, category: sector || null, country, pageSize: 20 }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    loadedArticles = (data.articles || []).filter(a => a.title && a.title !== '[Removed]');
+    renderNews(loadedArticles);
+    updateChatContext();
+  } catch(e) {
+    document.getElementById('newsList').innerHTML = `
+      <div class="news-empty">
+        <div class="news-empty-icon">⚠️</div>
+        <div class="news-empty-title">Failed to load</div>
+        <div class="news-empty-sub">${e.message}</div>
+      </div>`;
+    document.getElementById('newsCount').textContent = 'Error';
+  }
+
+  fetchBtn.disabled = false;
+  fetchBtn.textContent = 'Fetch News';
+}
+
+function renderNews(articles) {
+  const list = document.getElementById('newsList');
+  document.getElementById('newsCount').textContent = `${articles.length} article${articles.length !== 1 ? 's' : ''}`;
+
+  if (!articles.length) {
+    list.innerHTML = `
+      <div class="news-empty">
+        <div class="news-empty-icon">🔍</div>
+        <div class="news-empty-title">No articles found</div>
+        <div class="news-empty-sub">Try a different topic or sector.</div>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = articles.map((a, i) => {
+    const source    = a.source?.name || 'Unknown';
+    const date      = a.publishedAt ? new Date(a.publishedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
+    const desc      = a.description || '';
+    const url       = a.url || '#';
+    return `
+    <div class="news-card" id="news-card-${i}" onclick="selectArticle(${i})">
+      <div class="news-source">${source}</div>
+      <div class="news-title">${a.title}</div>
+      ${desc ? `<div class="news-desc">${desc}</div>` : ''}
+      <div class="news-meta">
+        <span>${date}</span>
+        ${url !== '#' ? `<a href="${url}" target="_blank" rel="noopener" class="news-read-link" onclick="event.stopPropagation()">Read →</a>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selectArticle(i) {
+  // Deselect previous
+  document.querySelectorAll('.news-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById(`news-card-${i}`)?.classList.add('selected');
+  selectedArticle = loadedArticles[i];
+  updateChatContext();
+
+  // Pre-fill a prompt about this article
+  const input = document.getElementById('tlChatInput');
+  input.value = `Tell me more about this article: "${selectedArticle.title}"`;
+  input.focus();
+}
+
+// ── CHAT CONTEXT ───────────────────────────────────
+function updateChatContext() {
+  const ctx = document.getElementById('chatContext');
+  const label = document.getElementById('chatContextLabel');
+  const parts = [];
+  if (loadedArticles.length) parts.push(`${loadedArticles.length} articles`);
+  if (userResume) parts.push('CV loaded');
+  if (parts.length) {
+    label.textContent = parts.join(' · ');
+    ctx.classList.add('visible');
+  } else {
+    ctx.classList.remove('visible');
+  }
+}
+
+function buildTlSystemPrompt() {
+  let prompt = `You are the Thought Leader Agent inside JobRadar — a sharp, direct career strategist. You help professionals position themselves as industry thought leaders.`;
+
+  if (userResume) {
+    prompt += `\n\n## CANDIDATE RESUME\n${userResume.slice(0, 2000)}`;
+  }
+
+  if (selectedArticle) {
+    prompt += `\n\n## SELECTED ARTICLE\nTitle: ${selectedArticle.title}\nSource: ${selectedArticle.source?.name || 'Unknown'}\nDescription: ${selectedArticle.description || 'N/A'}\nPublished: ${selectedArticle.publishedAt || 'N/A'}`;
+  } else if (loadedArticles.length) {
+    const summaries = loadedArticles.slice(0, 8).map(a => `- "${a.title}" (${a.source?.name || 'Unknown'})`).join('\n');
+    prompt += `\n\n## LOADED ARTICLES\n${summaries}`;
+  }
+
+  prompt += `\n\nBe direct and concise. 2-4 sentences max unless the user asks for detail. Help the user position themselves against current trends, identify what to post about, and craft a sharper professional narrative.`;
+  return prompt;
+}
+
+// ── CHAT ───────────────────────────────────────────
+function formatMsgText(text) {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .split(/\n{2,}/)
+    .map(p => p.trim()).filter(Boolean)
+    .map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`)
+    .join('');
+}
+
+function appendTlMsg(text, type) {
+  const msgs = document.getElementById('tlChatMessages');
+  const el = document.createElement('div');
+  el.className = `chat-msg ${type}`;
+  if (type === 'assistant') el.innerHTML = formatMsgText(text);
+  else el.textContent = text;
+  msgs.appendChild(el);
+  msgs.scrollTop = msgs.scrollHeight;
+  return el;
+}
+
+async function sendTlChat() {
+  const input = document.getElementById('tlChatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  document.getElementById('tlSendBtn').disabled = true;
+  document.getElementById('tlSuggestions').style.display = 'none';
+  appendTlMsg(msg, 'user');
+  tlChatHistory.push({ role: 'user', content: msg });
+
+  const preDelay = (1.5 + Math.random() * 1) * 1000;
+  await new Promise(r => setTimeout(r, preDelay));
+  const thinking = appendTlMsg('Thought Leader Agent is thinking…', 'thinking');
+
+  try {
+    const fetchPromise = fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: tlChatHistory, systemPrompt: buildTlSystemPrompt() }),
+    });
+    const typingDelay = (3 + Math.random() * 3) * 1000;
+    const [res] = await Promise.all([fetchPromise, new Promise(r => setTimeout(r, typingDelay))]);
+    const data = await res.json();
+    thinking.remove();
+    if (data.error) throw new Error(data.error);
+    const reply = data.reply || 'No response.';
+    appendTlMsg(reply, 'assistant');
+    tlChatHistory.push({ role: 'assistant', content: reply });
+  } catch(e) {
+    thinking.remove();
+    appendTlMsg(`Error: ${e.message}`, 'assistant');
+  }
+
+  document.getElementById('tlSendBtn').disabled = false;
+  input.focus();
+}
+
+function sendSuggestion(btn) {
+  document.getElementById('tlChatInput').value = btn.textContent;
+  sendTlChat();
+}
+
+// ── LINKEDIN ───────────────────────────────────────
+function connectLinkedIn() {
+  // Placeholder — LinkedIn OAuth app registration required
+  // When ready: redirect to LinkedIn OAuth flow
+  // https://www.linkedin.com/developers/apps
+  alert('LinkedIn integration coming soon. Register your app at linkedin.com/developers to enable OAuth.');
+}
+</script>
+</body>
+</html>
