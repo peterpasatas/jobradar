@@ -934,6 +934,41 @@ nav {
 }
 .sched-save:hover { background: #000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
 
+.sched-existing-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 24px;
+  background: var(--accent-light);
+  border-top: 1px solid var(--accent-border);
+  border-bottom: 1px solid var(--accent-border);
+  flex-shrink: 0;
+}
+.sched-existing-label {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.8px; text-transform: uppercase;
+  color: var(--accent); white-space: nowrap;
+}
+.sched-existing-detail {
+  font-size: 12px; color: var(--text-2);
+  font-family: 'DM Mono', monospace;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.sched-delete {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 12px;
+  background: transparent;
+  border: 1px solid #f0c8c8;
+  border-radius: 7px;
+  color: var(--skip);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px; font-weight: 500;
+  cursor: pointer; transition: all 0.15s;
+  white-space: nowrap;
+}
+.sched-delete:hover { background: #fdf0f0; border-color: var(--skip); }
+
 /* ── COUNTRY PICKER ───────────────────────────── */
 .country-picker { position: relative; display: inline-flex; align-items: center; }
 .country-dropdown {
@@ -1245,11 +1280,20 @@ nav {
 
   </div>
 
+  <!-- Existing schedule bar -->
+  <div class="sched-existing-bar" id="existingScheduleBar" style="display:none;"></div>
+
   <div class="sched-footer">
-    <div class="sched-status" id="schedStatus"></div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="sched-status" id="schedStatus"></div>
+      <button class="sched-delete" id="schedDeleteBtn" onclick="deleteSchedule()" style="display:none;">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Remove schedule
+      </button>
+    </div>
     <div style="display:flex;gap:8px;">
       <button class="sched-cancel" onclick="closeSchedule()">Cancel</button>
-      <button class="sched-save" onclick="saveSchedule()">Save schedule</button>
+      <button class="sched-save" id="schedSaveBtn" onclick="saveSchedule()">Save schedule</button>
     </div>
   </div>
 </div>
@@ -1727,9 +1771,49 @@ document.addEventListener('keydown', e => {
 // ── SCHEDULE MODAL ────────────────────────────────
 let schedQueries = [], schedCountries = [], schedSerpQueries = [], schedSerpCities = [], schedSerpCountries = [];
 
-function openSchedule() {
+async function openSchedule() {
   document.getElementById('scheduleBackdrop').classList.add('open');
   document.getElementById('scheduleModal').classList.add('open');
+  await loadExistingSchedule();
+}
+
+async function loadExistingSchedule() {
+  const { data } = await sb.from('profiles').select('schedule_config').eq('id', userId).single();
+  const config = data?.schedule_config;
+
+  const existingBar = document.getElementById('existingScheduleBar');
+  const deleteBtn = document.getElementById('schedDeleteBtn');
+  const saveBtn = document.getElementById('schedSaveBtn');
+
+  if (config) {
+    // Show existing schedule summary
+    const sourceLabel = config.source === 'serp' ? 'Google Jobs' : 'Adzuna';
+    const titles = (config.queries || []).join(', ');
+    const countries = (config.countries || []).map(c => COUNTRY_DISPLAY[c] || c).join(', ');
+    const time = config.time === '09:00' ? '9:00 AM' : '11:59 PM';
+    existingBar.innerHTML = `<span class="sched-existing-label">Active schedule</span><span class="sched-existing-detail">${sourceLabel} · ${titles} · ${countries} · ${time}</span>`;
+    existingBar.style.display = 'flex';
+    deleteBtn.style.display = 'flex';
+    saveBtn.textContent = 'Update schedule';
+  } else {
+    existingBar.style.display = 'none';
+    deleteBtn.style.display = 'none';
+    saveBtn.textContent = 'Save schedule';
+  }
+}
+
+async function deleteSchedule() {
+  if (!confirm('Remove your scheduled alert?')) return;
+  const { error } = await sb.from('profiles').update({
+    schedule_config: null,
+    updated_at: new Date().toISOString(),
+  }).eq('id', userId);
+  if (error) { showSchedStatus('Error removing schedule.', 'err'); return; }
+  showSchedStatus('Schedule removed ✓', 'ok');
+  document.getElementById('existingScheduleBar').style.display = 'none';
+  document.getElementById('schedDeleteBtn').style.display = 'none';
+  document.getElementById('schedSaveBtn').textContent = 'Save schedule';
+  setTimeout(() => closeSchedule(), 1200);
 }
 
 function closeSchedule() {
