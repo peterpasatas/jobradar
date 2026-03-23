@@ -753,6 +753,187 @@ nav {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
+/* ── SCHEDULE BUTTON ─────────────────────────── */
+.schedule-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 14px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  margin-left: 8px;
+}
+.schedule-btn:hover { background: #008f5e; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,163,108,0.3); }
+
+/* ── SCHEDULE MODAL ───────────────────────────── */
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.3);
+  backdrop-filter: blur(3px);
+  z-index: 600;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.22s ease;
+}
+.modal-backdrop.open { opacity: 1; pointer-events: all; }
+
+.schedule-modal {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -46%) scale(0.97);
+  width: 600px;
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 80px);
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.16);
+  z-index: 700;
+  display: flex; flex-direction: column;
+  opacity: 0; pointer-events: none;
+  transition: all 0.22s ease;
+  overflow: hidden;
+}
+.schedule-modal.open {
+  opacity: 1; pointer-events: all;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.sched-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 22px 24px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.sched-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--text); letter-spacing: -0.3px; }
+.sched-sub { font-size: 13px; color: var(--text-3); margin-top: 3px; }
+.sched-close {
+  background: none; border: none; color: var(--text-3);
+  cursor: pointer; padding: 4px; border-radius: 6px;
+  transition: all 0.15s; display: flex; align-items: center; flex-shrink: 0;
+}
+.sched-close:hover { color: var(--text); background: var(--surface); }
+
+.sched-body {
+  flex: 1; overflow-y: auto;
+  padding: 20px 24px;
+  display: flex; flex-direction: column; gap: 20px;
+}
+
+.sched-section { display: flex; flex-direction: column; gap: 8px; }
+.sched-section-title {
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.8px; text-transform: uppercase;
+  color: var(--text-2);
+}
+.sched-row { display: flex; gap: 16px; flex-wrap: wrap; }
+
+.sched-tags {
+  display: flex; flex-wrap: wrap; gap: 4px; min-height: 0;
+}
+.sched-tags .tag-pill { font-size: 12px; }
+
+.sched-input {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  padding: 9px 12px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.sched-input:focus { border-color: var(--accent); }
+.sched-input::placeholder { color: var(--text-3); }
+
+.sched-num {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  padding: 9px 12px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.sched-num:focus { border-color: var(--accent); }
+
+.sched-select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  padding: 9px 12px;
+  outline: none;
+  cursor: pointer;
+  width: 100%;
+}
+
+.sched-source-toggle {
+  display: flex; gap: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px; width: fit-content;
+}
+.sched-source-opt {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px; font-weight: 500;
+  color: var(--text-3);
+  transition: all 0.15s;
+}
+.sched-source-opt input[type=radio] { display: none; }
+.sched-source-opt:has(input:checked) { background: #fff; color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+
+.format-label { font-size: 13px; font-weight: 600; color: var(--text); }
+.format-desc  { font-size: 12px; color: var(--text-3); margin-top: 3px; line-height: 1.5; }
+.sched-format-info {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 16px;
+  background: var(--accent-light);
+  border: 1px solid var(--accent-border);
+  border-radius: 10px;
+}
+.format-info-icon { color: var(--accent); font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+.sched-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 24px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  background: #fafafa;
+}
+.sched-status { font-size: 12px; color: var(--accent); font-family: 'DM Mono', monospace; min-height: 16px; }
+.sched-cancel {
+  padding: 9px 18px;
+  background: transparent; border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text-2);
+  font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all 0.15s;
+}
+.sched-cancel:hover { border-color: var(--border-strong); color: var(--text); }
+.sched-save {
+  padding: 9px 20px;
+  background: var(--text); color: #fff;
+  border: none; border-radius: 8px;
+  font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s;
+}
+.sched-save:hover { background: #000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+
 /* ── COUNTRY PICKER ───────────────────────────── */
 .country-picker { position: relative; display: inline-flex; align-items: center; }
 .country-dropdown {
@@ -800,6 +981,7 @@ nav {
     <span>History</span>
     <select id="historySelect" onchange="loadHistoricRun(this.value)"><option value="">Select run…</option></select>
   </div>
+  <button class="schedule-btn" onclick="openSchedule()">⏱ Schedule</button>
   <div class="nav-right">
     <span id="navEmail"></span>
     <button class="nav-btn" onclick="signOut()">Sign out</button>
@@ -817,9 +999,19 @@ nav {
     <input class="tag-input-inline" id="countryInput" placeholder="+ country" autocomplete="off" oninput="filterCountryDropdown('countryInput','countryDropdownAdzuna')" onfocus="showCountryDropdown('countryInput','countryDropdownAdzuna')" onblur="hideCountryDropdown('countryDropdownAdzuna',200)">
     <div class="cmd-sep"></div>
     <span class="cmd-label">Results</span>
-    <input type="number" class="num-inline" id="resultsPerQuery" value="10" min="1" max="50">
-    <span class="cmd-label">Days</span>
-    <input type="number" class="num-inline" id="maxDaysOld" value="1" min="1" max="90">
+    <select class="num-inline" id="resultsPerQuery" style="width:64px;">
+      <option value="10">10</option>
+      <option value="20">20</option>
+      <option value="30">30</option>
+      <option value="40">40</option>
+      <option value="50">50</option>
+    </select>
+    <span class="cmd-label">Posted</span>
+    <select class="num-inline" id="maxDaysOld" style="width:auto;">
+      <option value="1">Today</option>
+      <option value="3" selected>Last 3 days</option>
+      <option value="7">Last week</option>
+    </select>
   </div>
 
   <div class="cmd-group" id="cmdSerp" style="display:none;">
@@ -835,10 +1027,18 @@ nav {
     <div class="tags-inline" id="serpCountriesInline"></div>
     <input class="tag-input-inline" id="serpCountryInput" placeholder="+ country" autocomplete="off" oninput="filterCountryDropdown('serpCountryInput','countryDropdownSerp')" onfocus="showCountryDropdown('serpCountryInput','countryDropdownSerp')" onblur="hideCountryDropdown('countryDropdownSerp',200)">
     <div class="cmd-sep"></div>
+    <span class="cmd-label">Results</span>
+    <select class="num-inline" id="serpResultsPerQuery" style="width:64px;">
+      <option value="10">10</option>
+      <option value="20">20</option>
+      <option value="30">30</option>
+      <option value="40">40</option>
+      <option value="50">50</option>
+    </select>
     <span class="cmd-label">Posted</span>
     <select id="serpDateRange" class="num-inline" style="width:auto;">
       <option value="today">Today</option>
-      <option value="3days" selected>3 days</option>
+      <option value="3days" selected>Last 3 days</option>
       <option value="week">Last week</option>
     </select>
   </div>
@@ -913,6 +1113,150 @@ nav {
   <div class="bubble-pulse" id="bubblePulse"></div>
   <div class="bubble-label">Talent Agent</div>
 </div>
+
+<!-- SCHEDULE MODAL -->
+<div class="modal-backdrop" id="scheduleBackdrop" onclick="closeSchedule()"></div>
+<div class="schedule-modal" id="scheduleModal">
+  <div class="sched-header">
+    <div>
+      <div class="sched-title">Schedule Daily Alert</div>
+      <div class="sched-sub">We'll run a search every day and email you a scored report.</div>
+    </div>
+    <button class="sched-close" onclick="closeSchedule()">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+
+  <div class="sched-body">
+
+    <div class="sched-section">
+      <div class="sched-section-title">Data Source</div>
+      <div class="sched-source-toggle">
+        <label class="sched-source-opt">
+          <input type="radio" name="schedSource" value="adzuna" id="schedAdzuna" checked onchange="toggleSchedSource()">
+          <span>Adzuna</span>
+        </label>
+        <label class="sched-source-opt">
+          <input type="radio" name="schedSource" value="serp" id="schedSerp" onchange="toggleSchedSource()">
+          <span>Google Jobs</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Adzuna fields -->
+    <div id="schedAdzunaPanel">
+      <div class="sched-section">
+        <div class="sched-section-title">Job Titles</div>
+        <div class="sched-tags" id="schedQueriesInline"></div>
+        <input class="sched-input" id="schedQueryInput" placeholder="Type a title and press Enter…">
+      </div>
+      <div class="sched-row">
+        <div class="sched-section" style="flex:1">
+          <div class="sched-section-title">Countries</div>
+          <div class="sched-tags" id="schedCountriesInline"></div>
+          <input class="sched-input" id="schedCountryInput" placeholder="+ country" autocomplete="off"
+            oninput="filterCountryDropdown('schedCountryInput','countryDropdownSched')"
+            onfocus="showCountryDropdown('schedCountryInput','countryDropdownSched')"
+            onblur="hideCountryDropdown('countryDropdownSched',200)">
+        </div>
+        <div class="sched-section" style="width:100px">
+          <div class="sched-section-title">Results</div>
+          <select class="sched-select" id="schedResults">
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="30">30</option>
+            <option value="40">40</option>
+            <option value="50">50</option>
+          </select>
+        </div>
+        <div class="sched-section" style="width:120px">
+          <div class="sched-section-title">Posted</div>
+          <select class="sched-select" id="schedDays">
+            <option value="1">Today</option>
+            <option value="3" selected>Last 3 days</option>
+            <option value="7">Last week</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Google Jobs fields -->
+    <div id="schedSerpPanel" style="display:none;">
+      <div class="sched-section">
+        <div class="sched-section-title">Job Titles</div>
+        <div class="sched-tags" id="schedSerpQueriesInline"></div>
+        <input class="sched-input" id="schedSerpQueryInput" placeholder="Type a title and press Enter…">
+      </div>
+      <div class="sched-row">
+        <div class="sched-section" style="flex:1">
+          <div class="sched-section-title">Cities</div>
+          <div class="sched-tags" id="schedSerpCitiesInline"></div>
+          <input class="sched-input" id="schedSerpCityInput" placeholder="+ city, press Enter">
+        </div>
+        <div class="sched-section" style="flex:1">
+          <div class="sched-section-title">Countries</div>
+          <div class="sched-tags" id="schedSerpCountriesInline"></div>
+          <input class="sched-input" id="schedSerpCountryInput" placeholder="+ country" autocomplete="off"
+            oninput="filterCountryDropdown('schedSerpCountryInput','countryDropdownSchedSerp')"
+            onfocus="showCountryDropdown('schedSerpCountryInput','countryDropdownSchedSerp')"
+            onblur="hideCountryDropdown('countryDropdownSchedSerp',200)">
+        </div>
+        <div class="sched-section" style="width:120px">
+          <div class="sched-section-title">Results</div>
+          <select class="sched-select" id="schedSerpResults">
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="30">30</option>
+            <option value="40">40</option>
+            <option value="50">50</option>
+          </select>
+        </div>
+        <div class="sched-section" style="width:130px">
+          <div class="sched-section-title">Posted within</div>
+          <select class="sched-select" id="schedSerpDate">
+            <option value="today">Today</option>
+            <option value="3days" selected>Last 3 days</option>
+            <option value="week">Last week</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="sched-section">
+      <div class="sched-section-title">Send time</div>
+      <div class="sched-row" style="gap:12px;align-items:center;">
+        <select class="sched-select" id="schedTime" style="width:160px;">
+          <option value="09:00" selected>9:00 AM</option>
+          <option value="23:59">11:59 PM</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="sched-section">
+      <div class="sched-section-title">Email content</div>
+      <div class="sched-format-info">
+        <div class="format-info-icon">✦</div>
+        <div>
+          <div class="format-label">All Apply matches + top 20% of Maybe</div>
+          <div class="format-desc">Each job includes title, company, location, score, and a one-line summary of strengths and gaps.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="sched-footer">
+    <div class="sched-status" id="schedStatus"></div>
+    <div style="display:flex;gap:8px;">
+      <button class="sched-cancel" onclick="closeSchedule()">Cancel</button>
+      <button class="sched-save" onclick="saveSchedule()">Save schedule</button>
+    </div>
+  </div>
+</div>
+
+<!-- Country dropdown for schedule modal -->
+<div class="country-dropdown" id="countryDropdownSched"></div>
+<div class="country-dropdown" id="countryDropdownSchedSerp"></div>
 
 <!-- CHAT OVERLAY -->
 <div class="chat-overlay" id="chatOverlay" onclick="closeChatOnBackdrop(event)">
@@ -1365,7 +1709,113 @@ function activateChat() {
   }
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && chatOpen) toggleChat(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { if (chatOpen) toggleChat(); else closeSchedule(); }
+});
+
+// ── SCHEDULE MODAL ────────────────────────────────
+let schedQueries = [], schedCountries = [], schedSerpQueries = [], schedSerpCities = [], schedSerpCountries = [];
+
+function openSchedule() {
+  document.getElementById('schedEmailDisplay').textContent = document.getElementById('navEmail').textContent;
+  document.getElementById('scheduleBackdrop').classList.add('open');
+  document.getElementById('scheduleModal').classList.add('open');
+}
+
+function closeSchedule() {
+  document.getElementById('scheduleBackdrop').classList.remove('open');
+  document.getElementById('scheduleModal').classList.remove('open');
+}
+
+function toggleSchedSource() {
+  const isSerp = document.getElementById('schedSerp').checked;
+  document.getElementById('schedAdzunaPanel').style.display = isSerp ? 'none' : '';
+  document.getElementById('schedSerpPanel').style.display   = isSerp ? '' : 'none';
+}
+
+// Setup tag inputs for schedule modal
+setupInlineTagInput('schedQueryInput',      schedQueries,      'schedQueriesInline');
+setupInlineTagInput('schedSerpQueryInput',  schedSerpQueries,  'schedSerpQueriesInline');
+setupInlineTagInput('schedSerpCityInput',   schedSerpCities,   'schedSerpCitiesInline');
+
+// Render tag helpers for schedule modal — reuse existing renderInlineTags
+function schedAddCountry(value, display, inputId, dropdownId, containerId) {
+  const isAdzuna = dropdownId === 'countryDropdownSched';
+  const arr = isAdzuna ? schedCountries : schedSerpCountries;
+  if (!arr.includes(value)) {
+    arr.push(value);
+    renderInlineTags(containerId, arr, inputId, isAdzuna ? COUNTRY_DISPLAY : null);
+  }
+  document.getElementById(inputId).value = '';
+  document.getElementById(dropdownId).classList.remove('open');
+}
+
+// Wire schedule country inputs to existing country picker (override selectCountry for sched inputs)
+const schedCountryInputIds = ['schedCountryInput', 'schedSerpCountryInput'];
+
+// Override populateDropdown for sched inputs — use schedAddCountry
+function filterCountryDropdownSched(inputId, dropdownId) {
+  const val = document.getElementById(inputId).value;
+  const isAdzuna = dropdownId === 'countryDropdownSched';
+  const countryList = isAdzuna ? ADZUNA_COUNTRIES : SERP_COUNTRIES;
+  const containerId = isAdzuna ? 'schedCountriesInline' : 'schedSerpCountriesInline';
+  const filtered = val ? countryList.filter(c => c.name.toLowerCase().includes(val.toLowerCase())) : countryList;
+  const dd = document.getElementById(dropdownId);
+  dd.innerHTML = filtered.length
+    ? filtered.map(c => {
+        const value = c.code || c.name;
+        return `<div class="country-option" onmousedown="schedAddCountry('${value}','${c.name}','${inputId}','${dropdownId}','${containerId}')">${c.name}</div>`;
+      }).join('')
+    : `<div class="country-option" style="color:var(--text-3);cursor:default;">No results</div>`;
+  positionDropdown(inputId, dropdownId);
+  dd.classList.add('open');
+}
+
+// Patch oninput for sched country inputs to use sched-specific handler
+document.getElementById('schedCountryInput').oninput = () => filterCountryDropdownSched('schedCountryInput', 'countryDropdownSched');
+document.getElementById('schedSerpCountryInput').oninput = () => filterCountryDropdownSched('schedSerpCountryInput', 'countryDropdownSchedSerp');
+
+async function saveSchedule() {
+  const source = document.querySelector('input[name="schedSource"]:checked').value;
+  const time = document.getElementById('schedTime').value;
+  const format = document.querySelector('input[name="schedFormat"]:checked').value;
+
+  let config = { source, time, format, email: document.getElementById('navEmail').textContent };
+
+  if (source === 'adzuna') {
+    if (!schedQueries.length)   { showSchedStatus('Add at least one job title.', 'err'); return; }
+    if (!schedCountries.length) { showSchedStatus('Add at least one country.', 'err'); return; }
+    config.queries   = schedQueries;
+    config.countries = schedCountries;
+    config.results   = parseInt(document.getElementById('schedResults').value) || 10;
+    config.days      = document.getElementById('schedDays').value || '3';
+  } else {
+    if (!schedSerpQueries.length)   { showSchedStatus('Add at least one job title.', 'err'); return; }
+    if (!schedSerpCountries.length) { showSchedStatus('Add at least one country.', 'err'); return; }
+    config.queries   = schedSerpQueries;
+    config.cities    = schedSerpCities;
+    config.countries = schedSerpCountries;
+    config.results   = parseInt(document.getElementById('schedSerpResults').value) || 10;
+    config.dateRange = document.getElementById('schedSerpDate').value;
+  }
+
+  // Save to Supabase profiles.schedule_config
+  const { error } = await sb.from('profiles').update({
+    schedule_config: config,
+    updated_at: new Date().toISOString(),
+  }).eq('id', userId);
+
+  if (error) { showSchedStatus('Error saving — ' + error.message, 'err'); return; }
+
+  showSchedStatus('Schedule saved ✓', 'ok');
+  setTimeout(() => closeSchedule(), 1400);
+}
+
+function showSchedStatus(msg, type) {
+  const el = document.getElementById('schedStatus');
+  el.textContent = msg;
+  el.style.color = type === 'err' ? 'var(--skip)' : 'var(--accent)';
+}
 
 // ── COUNTRY PICKER ────────────────────────────────
 const ADZUNA_COUNTRIES = [
