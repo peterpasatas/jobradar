@@ -143,7 +143,9 @@ Apply in order, first match wins:
 
 ## OUTPUT
 Return ONLY a valid JSON array with exactly ${jobs.length} objects. No markdown, no explanation, no preamble:
-[{"index":integer,"extracted_title":string,"skills":string[top 5 direct-match skills only],"experience_years":integer,"summary":"[Role type 2-4 words]. You're strong in [2-3 specific matched strengths with evidence]. You're weak in [2-3 specific critical gaps].","relevance_score":integer,"recommendation":"Apply"|"Maybe"|"Skip"}]
+[{"index":0,"extracted_title":"Example Role Title","skills":["skill1","skill2"],"experience_years":3,"summary":"AI Consultant. You're strong in stakeholder management, Power Platform, workshop delivery. You're weak in Python, cloud infrastructure, RAG.","relevance_score":65,"recommendation":"Maybe"}]
+
+Use that structure for all ${jobs.length} jobs. The summary must always follow this exact format: "[Role type 2-4 words]. You're strong in [specific strengths]. You're weak in [specific gaps]." — no other format is acceptable.
 
 Evaluate all ${jobs.length} jobs now.`;
 
