@@ -130,7 +130,7 @@ async function collectSerpJobs(queries, locations, countries, dateRange = '3days
         done++;
         onProgress && onProgress(done, total, `[${location}] "${query}" p${page + 1}`);
         await sleep(500);
-        if (!nextToken || raw.length < 10) break;
+        if (!nextToken) break;
         next_page_token = nextToken;
       }
     }
