@@ -85,27 +85,28 @@ const SERP_COUNTRY_MAP = {
   'Remote':          { gl: 'gb', hl: 'en', location: 'London, England, United Kingdom' },
 };
 
-async function fetchSerpJobs(query, location, gl = 'gb', hl = 'en', dateRange = '3days') {
+async function fetchSerpJobs(query, location, gl = 'gb', hl = 'en', dateRange = '3days', next_page_token = null) {
   try {
     const res = await fetch('/api/fetch-serp-jobs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, location, gl, hl, dateRange }),
+      body: JSON.stringify({ query, location, gl, hl, dateRange, next_page_token }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (data.debug?.serpapi_error) console.error('SerpAPI error:', data.debug.serpapi_error);
-    return data.results || [];
+    return { results: data.results || [], next_page_token: data.next_page_token || null };
   } catch(e) {
     console.warn(`SerpAPI "${query}" in ${location}: ${e.message}`);
-    return [];
+    return { results: [], next_page_token: null };
   }
 }
 
-async function collectSerpJobs(queries, locations, countries, dateRange = '3days', onProgress) {
+async function collectSerpJobs(queries, locations, countries, dateRange = '3days', onProgress, resultsPerQuery = 10) {
   const unique = new Map();
   let skipped = 0;
-  const total = queries.length * locations.length;
+  const pagesPerQuery = Math.ceil(resultsPerQuery / 10);
+  const total = queries.length * locations.length * pagesPerQuery;
   let done = 0;
 
   for (const location of locations) {
@@ -115,15 +116,22 @@ async function collectSerpJobs(queries, locations, countries, dateRange = '3days
     const params = SERP_COUNTRY_MAP[countryName] || { gl: 'gb', hl: 'en' };
 
     for (const query of queries) {
-      const raw = await fetchSerpJobs(query, location, params.gl, params.hl, dateRange);
-      for (const job of raw) {
-        if (!job.id || unique.has(job.id)) continue;
-        if (isExcluded(job)) { skipped++; continue; }
-        unique.set(job.id, job);
+      let next_page_token = null;
+      for (let page = 0; page < pagesPerQuery; page++) {
+        const { results: raw, next_page_token: nextToken } = await fetchSerpJobs(
+          query, location, params.gl, params.hl, dateRange, next_page_token
+        );
+        for (const job of raw) {
+          if (!job.id || unique.has(job.id)) continue;
+          if (isExcluded(job)) { skipped++; continue; }
+          unique.set(job.id, job);
+        }
+        done++;
+        onProgress && onProgress(done, total, `[${location}] "${query}" p${page + 1}`);
+        await sleep(500);
+        if (!nextToken || raw.length < 10) break;
+        next_page_token = nextToken;
       }
-      done++;
-      onProgress && onProgress(done, total, `[${location}] "${query}"`);
-      await sleep(500);
     }
   }
   return { jobs: [...unique.values()], skipped };

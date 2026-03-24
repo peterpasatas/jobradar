@@ -1,7 +1,6 @@
 // api/fetch-serp-jobs.js
 // Calls SerpAPI Google Jobs endpoint server-side — key never exposed to browser
-// Free tier: 250 searches/month
-// Pagination uses next_page_token (start param deprecated by Google)
+// Pagination uses next_page_token — must be sent alone without other params
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -17,21 +16,24 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'query and location are required' });
     }
 
-    const strictQuery = `${query} ${location}`;
     const url = new URL('https://serpapi.com/search');
-    url.searchParams.set('engine',   'google_jobs');
-    url.searchParams.set('q',        strictQuery);
-    url.searchParams.set('location', location);
-    url.searchParams.set('gl',       gl);
-    url.searchParams.set('hl',       hl);
-    url.searchParams.set('ltype',    'l');
-    if (next_page_token) {
-      url.searchParams.set('next_page_token', next_page_token);
-    }
-    const dateMap = { today: 'today', '3days': '3days', week: 'week' };
-    const datePart = dateMap[dateRange] || '3days';
-    url.searchParams.set('chips', `date_posted:${datePart}`);
     url.searchParams.set('api_key', process.env.SERPAPI_KEY);
+    url.searchParams.set('engine', 'google_jobs');
+
+    if (next_page_token) {
+      // Pagination — only send the token, all search state is encoded inside it
+      url.searchParams.set('next_page_token', next_page_token);
+    } else {
+      // First page — send full query
+      const dateMap = { today: 'today', '3days': '3days', week: 'week' };
+      const datePart = dateMap[dateRange] || '3days';
+      url.searchParams.set('q',        `${query} ${location}`);
+      url.searchParams.set('location', location);
+      url.searchParams.set('gl',       gl);
+      url.searchParams.set('hl',       hl);
+      url.searchParams.set('ltype',    'l');
+      url.searchParams.set('chips',    `date_posted:${datePart}`);
+    }
 
     const response = await fetch(url.toString());
 
@@ -41,8 +43,7 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
-
-    if (data.error) console.error('SerpAPI error field:', data.error);
+    if (data.error) console.error('SerpAPI error:', data.error);
 
     const jobs = (data.jobs_results || []).map(job => normaliseJob(job));
 
