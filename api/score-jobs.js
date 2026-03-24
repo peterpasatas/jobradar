@@ -65,10 +65,15 @@ These are NOT direct matches:
 - "Basic" or self-described beginner skills (e.g. "Python (Basic)")
 - Using AI tools (prompting, Copilot) ≠ AI engineering (RAG, MLOps, model evaluation, cloud AI)
 - HR, staffing, or portfolio management ≠ software/data/consulting core functions
+- Configuring or orchestrating AI tools via UI or low-code ≠ building or engineering AI systems in code
+- "Agentic AI" experience via Copilot Studio, Power Automate, or similar platforms does NOT satisfy requirements for engineering, SDLC/ADLC, CI/CD, or production deployment of agentic systems
+- Shared terminology ("agentic", "orchestration", "automation") is NOT evidence of matching skills — match based on what was actually built and how
 
 Adjacent skills count only toward nice-to-haves, never toward core requirements.
 
 Ask: "Could this candidate perform the core responsibilities on day one?" — not "Do they use similar words?"
+
+CRITICAL — programming language requirements: If the role lists a specific programming language (Python, Java, Scala, Go, etc.) as required or essential, and the candidate has no direct hands-on evidence of using it in production work, this is a CRITICAL missing core requirement. "Basic" self-assessment, bootcamp exposure, or tool usage that involves no coding does NOT satisfy this.
 
 For non-technical roles (consulting, operations, project delivery, AI adoption), these count as DIRECT when the job requires them:
 stakeholder management, translating requirements, workflow design, project delivery, change management, driving adoption, facilitating workshops, managing workstreams, client relationship management.
@@ -91,11 +96,12 @@ Deduct for every missing core requirement. Do not reinterpret gaps as partial ma
 
 ### STEP 6 — Apply hard caps
 Evaluate ALL conditions. Apply the most restrictive cap triggered (lowest ceiling wins):
-  No relevant experience in the role's core function          → max 40
-  Candidate seniority 2+ levels below role                   → max 45
-  core_match_pct < 40%                                        → max 50
-  Role requires software/backend/cloud/data engineering and candidate has no direct evidence → max 55
-  core_match_pct < 60%                                        → max 60
+  No relevant experience in the role's core function                                          → max 40
+  Candidate seniority 2+ levels below role                                                   → max 45
+  core_match_pct < 40%                                                                        → max 50
+  Role requires software/backend/cloud/data engineering and candidate has no direct evidence  → max 55
+  Role requires specific programming language(s) and candidate has no direct coding evidence  → max 55
+  core_match_pct < 60%                                                                        → max 60
   capped_score = min(penalized_score, applicable_cap)
 
 ### STEP 7 — Sanity check (MANDATORY)
