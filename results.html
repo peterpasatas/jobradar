@@ -1592,7 +1592,7 @@ async function runSearch() {
       const job = jobs[i], a = indexMap[i];
       if (!a) continue;
       const skills = Array.isArray(a.skills) ? a.skills : [];
-      rows.push({ user_id: userId, run_date: today, run_id: runId, job_id: job.id, title: a.extracted_title || job.title, company: job.company, location: a.location || job.location, summary: a.summary || '', extracted_skills: skills, experience_years: a.experience_years || 0, relevance_score: a.relevance_score || 0, recommendation: a.recommendation || 'Unknown', salary_min: job.salary_min, salary_max: job.salary_max, url: job.url, via: job.via || job.source || '', skills_arr: skills });
+      rows.push({ user_id: userId, run_date: today, run_id: runId, job_id: job.id, title: a.extracted_title || job.title, company: job.company, location: a.location || job.location, summary: a.summary || '', extracted_skills: Array.isArray(a.skills) ? a.skills : (a.skills||'').split(',').map(s=>s.trim()).filter(Boolean), experience_years: Math.floor(a.experience_years || 0), relevance_score: a.relevance_score || 0, recommendation: a.recommendation || 'Unknown', salary_min: job.salary_min, salary_max: job.salary_max, url: job.url, via: job.via || job.source || '', skills_arr: Array.isArray(a.skills) ? a.skills : (a.skills||'').split(',').map(s=>s.trim()).filter(Boolean) });
     }
     rows.sort((a,b) => (b.relevance_score||0)-(a.relevance_score||0));
     allResults = rows;
