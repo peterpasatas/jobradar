@@ -23,112 +23,127 @@ export default async function handler(req, res) {
       location: j.location, description: j.description,
     })), null, 2);
 
-    const prompt = `You are a strict, evidence-based hiring evaluator. Do not be encouraging or optimistic. Follow every step in order.
+    const prompt = `You are a senior hiring evaluator. Your task is strict, evidence-based semantic comparison of a resume against a job description. You do not encourage or inflate. You evaluate actual evidence only.
 
-## CANDIDATE RESUME
+## INPUTS
+
+### CANDIDATE RESUME
 ${resumeText.slice(0, 4200)}
 
-## JOB POSTINGS
+### JOB POSTING
 ${postingsJson}
 
 ---
 
-## EVALUATION PIPELINE
+## EVALUATION PIPELINE — execute every step in order, no skipping
 
-### STEP 1 — Language check
-If the job description is not in English: set score=0, recommendation="Skip", stop. Do not evaluate further.
+---
 
-### STEP 2 — Extract core requirements
-A requirement is CORE only if it meets at least one of:
-- Listed under a heading: "Requirements", "Must-have", "Essential", "You will need", or equivalent
-- Uses language: "required", "must have", "essential", "proven experience in"
-- Mentioned 2+ times across the description
-- Tied to daily responsibilities: "you will...", "responsible for..."
+### STEP 1 — Language gate
+If any job description is not in English: score=0, recommendation="Skip", skip all remaining steps for that job.
 
-Everything else is a nice-to-have. When uncertain, classify as nice-to-have.
+---
 
-Examples:
-✓ CORE: "Responsible for building ETL pipelines in Python daily" → Python is core
-✓ CORE: "Must have 3+ years of SQL experience" → SQL is core
-✗ NICE-TO-HAVE: "Familiarity with Python preferred" → Python is nice-to-have
-✗ NICE-TO-HAVE: "Experience with Tableau a plus" → nice-to-have
+### STEP 2 — Role classification
+For each job, classify the role as one of:
+- TECHNICAL: requires hands-on software/data/AI engineering, coding, or infrastructure (e.g. software engineer, data engineer, ML engineer, platform engineer, DevOps)
+- HYBRID: delivery, architecture, or consulting roles that require both technical understanding AND non-technical skills (e.g. solutions architect, technical PM, AI consultant, delivery manager)
+- NON-TECHNICAL: strategy, operations, enablement, change management, stakeholder management (e.g. programme manager, AI adoption lead, consulting analyst, operations manager)
 
-Count: total_core (integer), direct_matches (integer), core_match_pct = direct_matches / total_core
+This classification determines what counts as DIRECT evidence in Step 3.
 
-### STEP 3 — Classify each match as DIRECT or ADJACENT
-A DIRECT match requires explicit evidence of hands-on implementation in a real work context.
+---
 
-These are NOT direct matches:
-- Low-code/no-code tools used internally (Power Platform, Copilot Studio, internal dashboards)
-- Conceptual knowledge, enablement sessions, training delivery, workshops
-- Job titles or buzzwords without supporting evidence of doing the work
-- "Basic" or self-described beginner skills (e.g. "Python (Basic)")
-- Using AI tools (prompting, Copilot) ≠ AI engineering (RAG, MLOps, model evaluation, cloud AI)
-- HR, staffing, or portfolio management ≠ software/data/consulting core functions
-- Configuring or orchestrating AI tools via UI or low-code ≠ building or engineering AI systems in code
-- "Agentic AI" experience via Copilot Studio, Power Automate, or similar platforms does NOT satisfy requirements for engineering, SDLC/ADLC, CI/CD, or production deployment of agentic systems
-- Shared terminology ("agentic", "orchestration", "automation") is NOT evidence of matching skills — match based on what was actually built and how
+### STEP 3 — Evidence classification (apply per core requirement)
+Extract every core requirement from the job description. A requirement is CORE if it appears under a Requirements/Must-have/Essential heading, uses "required/must have/essential/proven experience in", is mentioned 2+ times, or is tied to daily responsibilities.
 
-Adjacent skills count only toward nice-to-haves, never toward core requirements.
+For each core requirement, classify the candidate's match as:
+- DIRECT: explicit hands-on evidence in a real work context — the candidate demonstrably did this thing
+- ADJACENT: related but not the same — candidate has transferable experience but not direct evidence
+- NONE: no evidence
 
-Ask: "Could this candidate perform the core responsibilities on day one?" — not "Do they use similar words?"
+Evidence rules by role type:
+TECHNICAL roles — DIRECT requires: production code, deployed systems, engineering ownership. The following are NEVER direct for technical roles: low-code/no-code tools (Power Platform, Copilot Studio), configuration-only work, prompt engineering, workshop delivery, enabling others to use tools, "Basic" self-assessed skills. Programming language listed as required + no production coding evidence = NONE.
 
-CRITICAL — programming language requirements: If the role lists a specific programming language (Python, Java, Scala, Go, etc.) as required or essential, and the candidate has no direct hands-on evidence of using it in production work, this is a CRITICAL missing core requirement. "Basic" self-assessment, bootcamp exposure, or tool usage that involves no coding does NOT satisfy this.
+HYBRID roles — DIRECT for technical requirements follows TECHNICAL rules above. DIRECT for delivery/coordination requirements: demonstrated project ownership, cross-functional team leadership, stakeholder management with evidence of outcomes.
 
-For non-technical roles (consulting, operations, project delivery, AI adoption), these count as DIRECT when the job requires them:
-stakeholder management, translating requirements, workflow design, project delivery, change management, driving adoption, facilitating workshops, managing workstreams, client relationship management.
+NON-TECHNICAL roles — DIRECT includes: stakeholder management, requirements translation, workflow design, project delivery, change management, adoption driving, workshop facilitation, workstream management, client relationship management — when the job requires them and the resume shows evidence.
 
-### STEP 4 — Calculate base score
-Use these exact formulas:
-  skills_score       = (core_match_pct × 30) + nice_to_have_pts   [max 40; nice_to_have_pts max 10]
-  experience_score   = min(candidate_years / required_years, 1) × 25   [max 25; if no years stated, estimate from resume]
-  role_align_score   = 20 if same function | 10 if adjacent | 5 if different   [max 20]
-  domain_fit_score   = 15 if same industry | 8 if adjacent | 3 if unrelated   [max 15]
-  base_score         = skills_score + experience_score + role_align_score + domain_fit_score   [max 100]
+ANTI-INFLATION RULE: Shared terminology ("agentic", "AI", "orchestration", "automation", "digital transformation") is NOT evidence of matching skills. Match on what was actually done, not what words were used.
 
-### STEP 5 — Apply penalties (MANDATORY — do not skip any)
-Deduct for every missing core requirement. Do not reinterpret gaps as partial matches.
-  Each missing secondary core requirement: -10
-  Each missing critical core requirement: -20
-  Total penalty for missing requirements: capped at -40
-  Overqualified by 2+ levels: -10
-  penalized_score = base_score - penalties
+Count: total_core_requirements (integer), direct_matches (integer), adjacent_matches (integer)
+core_match_pct = direct_matches / total_core_requirements
 
-### STEP 6 — Apply hard caps
-Evaluate ALL conditions. Apply the most restrictive cap triggered (lowest ceiling wins):
-  No relevant experience in the role's core function                                          → max 40
-  Candidate seniority 2+ levels below role                                                   → max 45
-  core_match_pct < 40%                                                                        → max 50
-  Role requires software/backend/cloud/data engineering and candidate has no direct evidence  → max 55
-  Role requires specific programming language(s) and candidate has no direct coding evidence  → max 55
-  core_match_pct < 60%                                                                        → max 60
-  capped_score = min(penalized_score, applicable_cap)
+---
 
-### STEP 7 — Sanity check (MANDATORY)
-Before finalising any score above 75:
-  Verify: core_match_pct ≥ 70% AND no major gaps in skills central to the role
-  If either fails → reduce score below 75
+### STEP 4 — Scored categories (compute each explicitly)
 
-Before finalising any score above 85:
-  Verify: candidate meets nearly ALL core requirements AND no gaps in central skills
-  If either fails → reduce score below 85
+**A. Skills Match — max 35 points**
+  direct_skill_pts  = (direct_matches / total_core_requirements) × 25
+  adjacent_skill_pts = (adjacent_matches / total_core_requirements) × 10  [max 7]
+  A_score = direct_skill_pts + adjacent_skill_pts  [cap at 35]
 
-Score of 90+ is exceptional and rare. Apply only when candidate is a near-perfect fit.
-final_score = capped_score after sanity adjustments
+**B. Experience Relevance — max 25 points**
+  years_pts    = min(candidate_years / required_years, 1.0) × 12  [if no requirement stated, use 8]
+  seniority_pts = 8 if level matches | 4 if one level off | 0 if two+ levels off
+  industry_pts  = 5 if same industry | 3 if adjacent | 0 if unrelated
+  B_score = years_pts + seniority_pts + industry_pts  [cap at 25]
 
-### STEP 8 — Recommendation
-Apply in order — first match wins:
-  final_score < 45                                                            → "Skip"
+**C. Responsibilities Alignment — max 20 points**
+  Proportion of job responsibilities the candidate has directly performed, weighted by depth of ownership:
+  C_score = (matching_responsibility_pct × 16) + ownership_depth_pts  [ownership: 0-4, cap total at 20]
+
+**D. Achievements and Impact — max 10 points**
+  quantified_results_pts = 0-5 based on evidence of measurable outcomes in resume
+  business_impact_pts    = 0-5 based on evidence of business outcomes relevant to this role
+  D_score = quantified_results_pts + business_impact_pts  [cap at 10]
+
+**E. Education and Certifications — max 10 points**
+  E_score = 10 if meets all required qualifications | 7 if meets preferred | 4 if adjacent | 0 if unrelated or missing required
+
+**F. Red Flags — deduction, 0 to -20 points**
+  Each missing CRITICAL core requirement (listed as essential/must-have): -8 each [cap deduction at -16]
+  Each missing SECONDARY core requirement: -3 each [cap deduction at -9]
+  Career gap > 12 months without explanation: -3
+  Overqualified by 2+ seniority levels: -5
+  F_score = sum of deductions [floor at -20]
+
+**raw_score = A_score + B_score + C_score + D_score + E_score + F_score**
+
+---
+
+### STEP 5 — Hard caps (apply AFTER raw_score, lowest ceiling wins)
+Evaluate all conditions and apply the most restrictive:
+  No relevant experience in role's core function                                              → ceiling = 35
+  Seniority 2+ levels below role requirement                                                 → ceiling = 42
+  core_match_pct < 35%                                                                        → ceiling = 48
+  TECHNICAL role: no direct coding/engineering evidence                                      → ceiling = 52
+  TECHNICAL role: required programming language(s) present, candidate has no coding evidence → ceiling = 52
+  core_match_pct < 55%                                                                        → ceiling = 58
+  No caps triggered                                                                           → ceiling = 100
+
+  final_score = min(raw_score, ceiling)
+
+---
+
+### STEP 6 — Sanity gates (mandatory check before finalising)
+Before assigning any score above 75: verify core_match_pct ≥ 65% AND no critical requirements missing. If either fails → reduce to 74.
+Before assigning any score above 85: verify core_match_pct ≥ 80% AND no gaps in skills central to the role. If either fails → reduce to 84.
+Score of 90+ is exceptional. Apply only when candidate is a near-perfect fit with direct evidence across nearly all core requirements.
+
+---
+
+### STEP 7 — Recommendation
+Apply in order, first match wins:
+  final_score < 45                                                              → "Skip"
   final_score ≥ 70 AND core_match_pct ≥ 60% AND no missing critical requirements → "Apply"
-  everything else                                                             → "Maybe"
-
-Never assign "Maybe" or "Apply" to a score below 45.
+  everything else                                                               → "Maybe"
 
 ---
 
 ## OUTPUT
 Return ONLY a valid JSON array with exactly ${jobs.length} objects. No markdown, no explanation, no preamble:
-[{"index":integer,"extracted_title":string,"skills":string[top 5 direct-match skills, sorted by relevance],"experience_years":integer,"summary":"[Role type 2-4 words]. You're strong in [2-3 matched strengths]. You're weak in [2-3 critical gaps]. e.g. 'AI Enablement Consultant. You're strong in stakeholder management, Power Platform, workshop delivery. You're weak in Python, cloud infrastructure, RAG.'","relevance_score":integer,"recommendation":"Apply"|"Maybe"|"Skip"}]
+[{"index":integer,"extracted_title":string,"skills":string[top 5 direct-match skills only],"experience_years":integer,"summary":"[Role type 2-4 words]. You're strong in [2-3 specific matched strengths with evidence]. You're weak in [2-3 specific critical gaps].","relevance_score":integer,"recommendation":"Apply"|"Maybe"|"Skip"}]
 
 Evaluate all ${jobs.length} jobs now.`;
 
