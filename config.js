@@ -102,10 +102,28 @@ async function fetchSerpJobs(query, location, gl = 'gb', hl = 'en', dateRange = 
   }
 }
 
+// Expands a single query into variations to get more results from SerpAPI
+// e.g. "Copilot" → ["Copilot", "Copilot consultant", "Copilot jobs"]
+function expandSerpQuery(query) {
+  const q = query.trim();
+  const lower = q.toLowerCase();
+  // Don't expand if already multi-word and specific
+  if (q.split(' ').length >= 3) return [q];
+  return [
+    q,
+    `${q} consultant`,
+    `${q} manager`,
+  ];
+}
+
 async function collectSerpJobs(queries, locations, countries, dateRange = '3days', onProgress) {
   const unique = new Map();
   let skipped = 0;
-  const total = queries.length * locations.length;
+
+  // Expand each query into variations
+  const expandedQueries = [...new Set(queries.flatMap(q => expandSerpQuery(q)))];
+
+  const total = expandedQueries.length * locations.length;
   let done = 0;
 
   for (const location of locations) {
@@ -114,7 +132,7 @@ async function collectSerpJobs(queries, locations, countries, dateRange = '3days
     ) || countries[0] || 'United Kingdom';
     const params = SERP_COUNTRY_MAP[countryName] || { gl: 'gb', hl: 'en' };
 
-    for (const query of queries) {
+    for (const query of expandedQueries) {
       const raw = await fetchSerpJobs(query, location, params.gl, params.hl, dateRange);
       for (const job of raw) {
         if (!job.id || unique.has(job.id)) continue;
