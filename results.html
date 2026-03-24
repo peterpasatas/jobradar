@@ -155,7 +155,31 @@ nav {
 }
 .nav-btn:hover { border-color: var(--border-strong); color: var(--text); }
 
-/* ── COMMAND BAR ─────────────────────────────────── */
+/* ── FREE TIER BANNER ────────────────────────────── */
+.free-tier-banner {
+  position: fixed;
+  top: calc(var(--ribbon-h) + var(--nav-h) + var(--cmd-h));
+  left: 0; right: 0;
+  background: #fff8e6;
+  border-bottom: 1px solid #f0d99a;
+  padding: 10px 32px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 90;
+  font-size: 13px;
+  color: #7a5c00;
+}
+.free-tier-banner strong { font-weight: 600; }
+.free-tier-banner a {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.free-tier-banner a:hover { opacity: 0.8; }
 .cmd-bar {
   position: fixed;
   top: calc(var(--ribbon-h) + var(--nav-h));
@@ -1061,12 +1085,18 @@ nav {
     <span>History</span>
     <select id="historySelect" onchange="loadHistoricRun(this.value)"><option value="">Select run…</option></select>
   </div>
-  <button class="schedule-btn" onclick="openSchedule()">⏱ Schedule</button>
+  <button class="schedule-btn" id="scheduleBtn" onclick="openSchedule()">⏱ Schedule</button>
   <div class="nav-right">
     <span id="navEmail"></span>
     <button class="nav-btn" onclick="signOut()">Sign out</button>
   </div>
 </nav>
+
+<div id="freeTierBanner" style="display:none;" class="free-tier-banner">
+  <span>🔒</span>
+  <span><strong>Free tier limit reached.</strong> You've used all 3 of your free searches. Upgrade to run unlimited searches and schedule daily alerts.</span>
+  <a href="mailto:hello@jobradar.shop">Contact us to upgrade →</a>
+</div>
 
 <div class="cmd-bar">
   <div class="cmd-group" id="cmdAdzuna">
@@ -1381,6 +1411,8 @@ nav {
 const sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON);
 let userId = null, allResults = [];
 let queries = [], countries = [], serpQueries = [], serpCities = [], serpCountries = [];
+let userTier = 'free';
+const FREE_TIER_RUN_LIMIT = 3;
 let activeRecFilter = 'all';
 let chatHistory = [], chatOpen = false;
 
@@ -1425,13 +1457,51 @@ async function loadProfile() {
   }
   if (!data) { renderAllTags(); return; }
   if (data.resume_text) { document.getElementById('resumeText').value = data.resume_text; updateResumeDot(); }
+
+  // Store tier globally
+  userTier = data.tier || 'free';
+
+  // Hide schedule button for free tier
+  if (userTier === 'free') {
+    document.getElementById('scheduleBtn').style.display = 'none';
+  }
+
   renderAllTags();
+  await checkFreeTierLimit();
 }
 
 async function saveResume() {
   const { error } = await sb.from('profiles').update({ resume_text: document.getElementById('resumeText').value.trim(), updated_at: new Date().toISOString() }).eq('id', userId);
   updateResumeDot();
   return !error;
+}
+
+async function checkFreeTierLimit() {
+  if (userTier !== 'free') return false; // admin/paid — no limit
+
+  // Count distinct run_ids for this user
+  const { data } = await sb.from('job_results')
+    .select('run_id')
+    .eq('user_id', userId)
+    .limit(500);
+
+  if (!data?.length) return false;
+
+  const distinctRuns = new Set(data.map(r => r.run_id)).size;
+  const limitReached = distinctRuns >= FREE_TIER_RUN_LIMIT;
+
+  if (limitReached) {
+    // Show banner
+    document.getElementById('freeTierBanner').style.display = 'flex';
+    // Disable run button
+    const runBtn = document.getElementById('runBtn');
+    if (runBtn) { runBtn.disabled = true; runBtn.title = 'Free tier limit reached — 3 searches used'; }
+    // Adjust main content top to account for banner
+    const main = document.querySelector('.main');
+    if (main) main.style.marginTop = '40px';
+  }
+
+  return limitReached;
 }
 
 async function savePreferences() {
@@ -1463,6 +1533,11 @@ async function loadHistoricRun(runId) {
 }
 
 async function runSearch() {
+  // Free tier hard stop
+  if (userTier === 'free') {
+    const blocked = await checkFreeTierLimit();
+    if (blocked) { addLog('Free tier limit reached. You have used all 3 searches.', 'err'); return; }
+  }
   const resume = document.getElementById('resumeText').value.trim();
   if (!resume) { if (!drawerOpen) toggleResume(); addLog('Add your resume first.', 'warn'); return; }
   await saveResume();
@@ -1818,6 +1893,10 @@ document.addEventListener('keydown', e => {
 let schedQueries = [], schedCountries = [], schedSerpQueries = [], schedSerpCities = [], schedSerpCountries = [];
 
 async function openSchedule() {
+  if (userTier === 'free') {
+    addLog('Scheduling is not available on the free tier.', 'err');
+    return;
+  }
   document.getElementById('scheduleBackdrop').classList.add('open');
   document.getElementById('scheduleModal').classList.add('open');
   updateUtcHint();
