@@ -85,29 +85,27 @@ const SERP_COUNTRY_MAP = {
   'Remote':          { gl: 'gb', hl: 'en', location: 'London, England, United Kingdom' },
 };
 
-async function fetchSerpJobs(query, location, gl = 'gb', hl = 'en', dateRange = '3days', next_page_token = null) {
+async function fetchSerpJobs(query, location, gl = 'gb', hl = 'en', dateRange = '3days') {
   try {
     const res = await fetch('/api/fetch-serp-jobs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, location, gl, hl, dateRange, next_page_token }),
+      body: JSON.stringify({ query, location, gl, hl, dateRange }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (data.debug?.serpapi_error) console.error('SerpAPI error:', data.debug.serpapi_error);
-    console.log(`SerpAPI [${location}] "${query}" token=${next_page_token ? 'yes' : 'none'} → ${data.results?.length} results, next=${data.next_page_token ? 'yes' : 'none'}`);
-    return { results: data.results || [], next_page_token: data.next_page_token || null };
+    return data.results || [];
   } catch(e) {
     console.warn(`SerpAPI "${query}" in ${location}: ${e.message}`);
-    return { results: [], next_page_token: null };
+    return [];
   }
 }
 
-async function collectSerpJobs(queries, locations, countries, dateRange = '3days', onProgress, resultsPerQuery = 10) {
+async function collectSerpJobs(queries, locations, countries, dateRange = '3days', onProgress) {
   const unique = new Map();
   let skipped = 0;
-  const pagesPerQuery = Math.ceil(resultsPerQuery / 10);
-  const total = queries.length * locations.length * pagesPerQuery;
+  const total = queries.length * locations.length;
   let done = 0;
 
   for (const location of locations) {
@@ -117,23 +115,15 @@ async function collectSerpJobs(queries, locations, countries, dateRange = '3days
     const params = SERP_COUNTRY_MAP[countryName] || { gl: 'gb', hl: 'en' };
 
     for (const query of queries) {
-      let next_page_token = null;
-      for (let page = 0; page < pagesPerQuery; page++) {
-        const { results: raw, next_page_token: nextToken } = await fetchSerpJobs(
-          query, location, params.gl, params.hl, dateRange, next_page_token
-        );
-        for (const job of raw) {
-          if (!job.id || unique.has(job.id)) continue;
-          if (isExcluded(job)) { skipped++; continue; }
-          unique.set(job.id, job);
-        }
-        done++;
-        onProgress && onProgress(done, total, `[${location}] "${query}" p${page + 1}`);
-        await sleep(500);
-        // Stop if no next page or fewer than 10 results
-        if (!nextToken || raw.length < 10) break;
-        next_page_token = nextToken;
+      const raw = await fetchSerpJobs(query, location, params.gl, params.hl, dateRange);
+      for (const job of raw) {
+        if (!job.id || unique.has(job.id)) continue;
+        if (isExcluded(job)) { skipped++; continue; }
+        unique.set(job.id, job);
       }
+      done++;
+      onProgress && onProgress(done, total, `[${location}] "${query}"`);
+      await sleep(500);
     }
   }
   return { jobs: [...unique.values()], skipped };
