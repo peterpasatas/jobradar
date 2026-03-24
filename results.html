@@ -1305,10 +1305,11 @@ nav {
     <div class="sched-section">
       <div class="sched-section-title">Send time</div>
       <div class="sched-row" style="gap:12px;align-items:center;">
-        <select class="sched-select" id="schedTime" style="width:160px;">
+        <select class="sched-select" id="schedTime" style="width:160px;" onchange="updateUtcHint()">
           <option value="09:00" selected>9:00 AM</option>
           <option value="23:59">11:59 PM</option>
         </select>
+        <span id="schedUtcHint" style="font-size:11px;color:var(--text-3);font-family:'DM Mono',monospace;"></span>
       </div>
     </div>
 
@@ -1819,6 +1820,7 @@ let schedQueries = [], schedCountries = [], schedSerpQueries = [], schedSerpCiti
 async function openSchedule() {
   document.getElementById('scheduleBackdrop').classList.add('open');
   document.getElementById('scheduleModal').classList.add('open');
+  updateUtcHint();
   await loadExistingSchedule();
 }
 
@@ -1835,8 +1837,10 @@ async function loadExistingSchedule() {
     const sourceLabel = config.source === 'serp' ? 'Google Jobs' : 'Adzuna';
     const titles = (config.queries || []).join(', ');
     const countries = (config.countries || []).map(c => COUNTRY_DISPLAY[c] || c).join(', ');
-    const time = config.time === '09:00' ? '9:00 AM' : '11:59 PM';
-    existingBar.innerHTML = `<span class="sched-existing-label">Active schedule</span><span class="sched-existing-detail">${sourceLabel} · ${titles} · ${countries} · ${time}</span>`;
+    const timeDisplay = config.localTime
+      ? `${config.localTime === '09:00' ? '9:00 AM' : '11:59 PM'} (local)`
+      : `${config.time} UTC`;
+    existingBar.innerHTML = `<span class="sched-existing-label">Active schedule</span><span class="sched-existing-detail">${sourceLabel} · ${titles} · ${countries} · ${timeDisplay}</span>`;
     existingBar.style.display = 'flex';
     deleteBtn.style.display = 'flex';
     saveBtn.textContent = 'Update schedule';
@@ -1919,11 +1923,29 @@ function filterCountryDropdownSched(inputId, dropdownId) {
 document.getElementById('schedCountryInput').oninput = () => filterCountryDropdownSched('schedCountryInput', 'countryDropdownSched');
 document.getElementById('schedSerpCountryInput').oninput = () => filterCountryDropdownSched('schedSerpCountryInput', 'countryDropdownSchedSerp');
 
+function localTimeToUtc(localHHMM) {
+  // Build a Date for today at the given local HH:MM, then extract UTC HH:MM
+  const [h, m] = localHHMM.split(':').map(Number);
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  const utcH = String(d.getUTCHours()).padStart(2, '0');
+  const utcM = String(d.getUTCMinutes()).padStart(2, '0');
+  return `${utcH}:${utcM}`;
+}
+
+function updateUtcHint() {
+  const localTime = document.getElementById('schedTime').value;
+  const utcTime = localTimeToUtc(localTime);
+  const hint = document.getElementById('schedUtcHint');
+  if (hint) hint.textContent = `= ${utcTime} UTC`;
+}
+
 async function saveSchedule() {
   const source = document.querySelector('input[name="schedSource"]:checked').value;
-  const time = document.getElementById('schedTime').value;
+  const localTime = document.getElementById('schedTime').value;
+  const utcTime = localTimeToUtc(localTime); // always store in UTC
 
-  let config = { source, time, format: 'apply_plus_top_maybe', email: document.getElementById('navEmail').textContent };
+  let config = { source, time: utcTime, localTime, format: 'apply_plus_top_maybe', email: document.getElementById('navEmail').textContent };
 
   if (source === 'adzuna') {
     if (!schedQueries.length)   { showSchedStatus('Add at least one job title.', 'err'); return; }
