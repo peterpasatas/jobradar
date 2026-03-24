@@ -85,16 +85,16 @@ const SERP_COUNTRY_MAP = {
   'Remote':          { gl: 'gb', hl: 'en', location: 'London, England, United Kingdom' },
 };
 
-async function fetchSerpJobs(query, location, gl = 'gb', hl = 'en', dateRange = '3days') {
+async function fetchSerpJobs(query, location, gl = 'gb', hl = 'en', dateRange = '3days', start = 0) {
   try {
     const res = await fetch('/api/fetch-serp-jobs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, location, gl, hl, dateRange }),
+      body: JSON.stringify({ query, location, gl, hl, dateRange, start }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    if (data.debug) console.log(`SerpAPI debug [${location}] "${query}":`, data.debug);
+    if (data.debug) console.log(`SerpAPI debug [${location}] "${query}" start=${start}:`, data.debug);
     if (data.debug?.serpapi_error) console.error('SerpAPI error:', data.debug.serpapi_error);
     return data.results || [];
   } catch(e) {
@@ -103,32 +103,35 @@ async function fetchSerpJobs(query, location, gl = 'gb', hl = 'en', dateRange = 
   }
 }
 
-async function collectSerpJobs(queries, locations, countries, dateRange = '3days', onProgress) {
-  // locations = cities if provided, otherwise country names
-  // countries = used for gl/hl localisation params
+async function collectSerpJobs(queries, locations, countries, dateRange = '3days', onProgress, resultsPerQuery = 10) {
   const unique = new Map();
   let skipped = 0;
-  const total = queries.length * locations.length;
+  // SerpAPI returns ~10 per page — calculate pages needed
+  const pagesPerQuery = Math.ceil(resultsPerQuery / 10);
+  const total = queries.length * locations.length * pagesPerQuery;
   let done = 0;
 
   for (const location of locations) {
-    // Find matching country params for this location
-    // Try exact country match first, then default to gb
     const countryName = countries.find(c =>
       location.toLowerCase().includes(c.toLowerCase().split(' ')[0].toLowerCase())
     ) || countries[0] || 'United Kingdom';
     const params = SERP_COUNTRY_MAP[countryName] || { gl: 'gb', hl: 'en' };
 
     for (const query of queries) {
-      const raw = await fetchSerpJobs(query, location, params.gl, params.hl, dateRange);
-      for (const job of raw) {
-        if (!job.id || unique.has(job.id)) continue;
-        if (isExcluded(job)) { skipped++; continue; }
-        unique.set(job.id, job);
+      for (let page = 0; page < pagesPerQuery; page++) {
+        const start = page * 10;
+        const raw = await fetchSerpJobs(query, location, params.gl, params.hl, dateRange, start);
+        for (const job of raw) {
+          if (!job.id || unique.has(job.id)) continue;
+          if (isExcluded(job)) { skipped++; continue; }
+          unique.set(job.id, job);
+        }
+        done++;
+        onProgress && onProgress(done, total, `[${location}] "${query}" p${page + 1}`);
+        await sleep(500);
+        // If fewer than 10 results returned, no point fetching next page
+        if (raw.length < 10) break;
       }
-      done++;
-      onProgress && onProgress(done, total, `[${location}] "${query}"`);
-      await sleep(500);
     }
   }
   return { jobs: [...unique.values()], skipped };

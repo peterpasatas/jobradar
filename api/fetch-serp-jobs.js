@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    const { query, location, gl = 'gb', hl = 'en', dateRange = '3days' } = req.body;
+    const { query, location, gl = 'gb', hl = 'en', dateRange = '3days', start = 0 } = req.body;
 
     if (!query || !location) {
       return res.status(400).json({ error: 'query and location are required' });
@@ -26,7 +26,8 @@ export default async function handler(req, res) {
     url.searchParams.set('location', location);
     url.searchParams.set('gl',       gl);
     url.searchParams.set('hl',       hl);
-    url.searchParams.set('ltype',    'l');  // strict location filtering
+    url.searchParams.set('ltype',    'l');
+    if (start > 0) url.searchParams.set('start', String(start));
     const dateMap = { today: 'today', '3days': '3days', week: 'week' };
     const datePart = dateMap[dateRange] || '3days';
     url.searchParams.set('chips', `date_posted:${datePart},employment_type:FULLTIME`);

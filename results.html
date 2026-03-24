@@ -1565,7 +1565,8 @@ async function runSearch() {
       if (!serpCountries.length) { addLog('Add at least one country for Google Jobs.', 'err'); resetBtn(); return; }
       const serpLocations = serpCities.length ? serpCities : serpCountries;
       const serpDateRange = document.getElementById('serpDateRange').value;
-      jobCollection = await collectSerpJobs(serpQueries, serpLocations, serpCountries, serpDateRange, (done, total, label) => { addLog(`${label} ✓`, 'ok'); setProgress((done/total)*40, `Fetching… ${done}/${total}`); });
+      const serpResultsPerQuery = parseInt(document.getElementById('serpResultsPerQuery').value) || 10;
+      jobCollection = await collectSerpJobs(serpQueries, serpLocations, serpCountries, serpDateRange, (done, total, label) => { addLog(`${label} ✓`, 'ok'); setProgress((done/total)*40, `Fetching… ${done}/${total}`); }, serpResultsPerQuery);
     } else {
       if (!queries.length) { addLog('Add at least one job title.', 'err'); resetBtn(); return; }
       if (!countries.length) { addLog('Add at least one country.', 'err'); resetBtn(); return; }
