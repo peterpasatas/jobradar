@@ -92,14 +92,10 @@ async function fetchSerpJobs(query, location, gl = 'gb', hl = 'en', dateRange = 
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, location, gl, hl, dateRange, next_page_token }),
     });
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error(`SerpAPI ${res.status} for token=${next_page_token ? next_page_token.slice(0,20) : 'none'}: ${errText.slice(0, 300)}`);
-      throw new Error(`HTTP ${res.status}: ${errText.slice(0, 200)}`);
-    }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (data.debug?.serpapi_error) console.error('SerpAPI error:', data.debug.serpapi_error);
-    console.log(`SerpAPI page token=${next_page_token ? 'yes' : 'no'} → ${data.results?.length} results, next_token=${data.next_page_token ? 'yes' : 'no'}`);
+    console.log(`SerpAPI "${query}" p${next_page_token ? '2+' : '1'} → ${data.results?.length} results, has_next=${data.next_page_token ? 'yes' : 'no'}`);
     return { results: data.results || [], next_page_token: data.next_page_token || null };
   } catch(e) {
     console.warn(`SerpAPI "${query}" in ${location}: ${e.message}`);

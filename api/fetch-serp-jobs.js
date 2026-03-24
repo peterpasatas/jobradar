@@ -1,42 +1,29 @@
 // api/fetch-serp-jobs.js
-// Calls SerpAPI Google Jobs endpoint server-side — key never exposed to browser
-// Pagination uses next_page_token — must be sent alone without other params
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Content-Type', 'application/json');
-
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
     const { query, location, gl = 'gb', hl = 'en', dateRange = '3days', next_page_token = null } = req.body;
+    if (!query || !location) return res.status(400).json({ error: 'query and location are required' });
 
-    if (!query || !location) {
-      return res.status(400).json({ error: 'query and location are required' });
-    }
+    const dateMap = { today: 'today', '3days': '3days', week: 'week' };
+    const datePart = dateMap[dateRange] || '3days';
 
     const url = new URL('https://serpapi.com/search');
-    url.searchParams.set('api_key', process.env.SERPAPI_KEY);
-    url.searchParams.set('engine', 'google_jobs');
-
-    if (next_page_token) {
-      // Pagination — only send the token, all search state is encoded inside it
-      url.searchParams.set('next_page_token', next_page_token);
-    } else {
-      // First page — send full query
-      const dateMap = { today: 'today', '3days': '3days', week: 'week' };
-      const datePart = dateMap[dateRange] || '3days';
-      url.searchParams.set('q',        `${query} ${location}`);
-      url.searchParams.set('location', location);
-      url.searchParams.set('gl',       gl);
-      url.searchParams.set('hl',       hl);
-      url.searchParams.set('ltype',    'l');
-      url.searchParams.set('chips',    `date_posted:${datePart}`);
-    }
+    url.searchParams.set('api_key',  process.env.SERPAPI_KEY);
+    url.searchParams.set('engine',   'google_jobs');
+    url.searchParams.set('q',        `${query} ${location}`);
+    url.searchParams.set('location', location);
+    url.searchParams.set('gl',       gl);
+    url.searchParams.set('hl',       hl);
+    url.searchParams.set('ltype',    'l');
+    url.searchParams.set('chips',    `date_posted:${datePart}`);
+    if (next_page_token) url.searchParams.set('next_page_token', next_page_token);
 
     const response = await fetch(url.toString());
-
     if (!response.ok) {
       const err = await response.text();
       return res.status(response.status).json({ error: `SerpAPI error: ${err.slice(0, 200)}` });
@@ -52,7 +39,6 @@ export default async function handler(req, res) {
       next_page_token: data.serpapi_pagination?.next_page_token || null,
       debug: {
         total_found: data.jobs_results?.length ?? 0,
-        serpapi_error: data.error || null,
         has_next_page: !!data.serpapi_pagination?.next_page_token,
       }
     });
@@ -63,7 +49,7 @@ export default async function handler(req, res) {
 }
 
 function normaliseJob(job) {
-  const extensions = job.detected_extensions || {};
+  const ext = job.detected_extensions || {};
   return {
     id:          job.job_id || `serp_${Math.random().toString(36).slice(2)}`,
     title:       job.title || 'N/A',
@@ -71,10 +57,10 @@ function normaliseJob(job) {
     location:    job.location || 'N/A',
     description: job.description || '',
     url:         job.apply_options?.[0]?.link || job.share_link || '',
-    salary_min:  extensions.salary_min || null,
-    salary_max:  extensions.salary_max || null,
+    salary_min:  ext.salary_min || null,
+    salary_max:  ext.salary_max || null,
     via:         job.via || '',
-    posted_at:   extensions.posted_at || 'Today',
+    posted_at:   ext.posted_at || 'Today',
     source:      'google_jobs',
   };
 }
