@@ -30,7 +30,7 @@ export default async function handler(req, res) {
     }
     const dateMap = { today: 'today', '3days': '3days', week: 'week' };
     const datePart = dateMap[dateRange] || '3days';
-    url.searchParams.set('chips', `date_posted:${datePart},employment_type:FULLTIME`);
+    url.searchParams.set('chips', `date_posted:${datePart}`);
     url.searchParams.set('api_key', process.env.SERPAPI_KEY);
 
     const response = await fetch(url.toString());
