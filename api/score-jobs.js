@@ -188,6 +188,20 @@ Evaluate all ${jobs.length} jobs now.`;
         return res.status(500).json({ error: `JSON parse failed: ${e.message}. Raw: ${raw.slice(0, 200)}` });
       }
 
+      // Enforce recommendation rules in code — Gemini frequently misapplies the score threshold
+      scored = scored.map(job => {
+        const score = job.relevance_score || 0;
+        let rec;
+        if (score < 45) {
+          rec = 'Skip';
+        } else if (score >= 70) {
+          rec = 'Apply';
+        } else {
+          rec = 'Maybe';
+        }
+        return { ...job, recommendation: rec };
+      });
+
       return res.status(200).json({ scored });
     }
 
