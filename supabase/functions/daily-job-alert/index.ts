@@ -2,7 +2,7 @@
 // Daily scheduled job alert — fetches, scores, and emails results to each user
 // Triggered by pg_cron at 9:00 AM and 23:59 UTC daily
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const SUPABASE_URL     = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
