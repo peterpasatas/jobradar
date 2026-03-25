@@ -23,7 +23,7 @@ const SCORE_FUNCTION = {
             },
             skills: {
               type: 'array',
-              description: 'Top direct-match skills from the resume, sorted by relevance. DIRECT evidence only — no adjacent or inferred skills.',
+              description: 'Top 5 direct-match skills from the resume that are most relevant to THIS specific role, sorted by relevance. For NON-TECHNICAL roles surface operational/management skills (e.g. capacity planning, stakeholder management), not technical tools unless the role explicitly requires them as core.',
               items: { type: 'string' },
               maxItems: 5,
             },
@@ -92,7 +92,9 @@ If any job description is not in English: set relevance_score=0, skip all remain
 Classify each role as one of:
 - TECHNICAL: requires hands-on software/data/AI engineering, coding, or infrastructure
 - HYBRID: delivery, architecture, or consulting roles requiring both technical understanding AND non-technical skills
-- NON-TECHNICAL: strategy, operations, enablement, change management, stakeholder management
+- NON-TECHNICAL: strategy, operations, enablement, change management, stakeholder management, resource management, HR, recruiting, programme management
+
+CRITICAL: A role that lists IT literacy or tools (Excel, Power BI) as a nice-to-have or secondary skill does NOT become TECHNICAL or HYBRID. Classify based on what the role primarily does day-to-day, not what tools are mentioned.
 
 ### STEP 3 — Evidence classification
 Extract every CORE requirement (under Requirements/Must-have/Essential heading, uses "required/must have/essential/proven experience in", mentioned 2+ times, or tied to daily responsibilities).
@@ -100,7 +102,7 @@ Extract every CORE requirement (under Requirements/Must-have/Essential heading, 
 Classify each match as DIRECT, ADJACENT, or NONE:
 - TECHNICAL roles — DIRECT requires production code, deployed systems, engineering ownership. NEVER direct: low-code/no-code tools, configuration-only work, prompt engineering, workshops, "Basic" skills. Required programming language + no production coding = NONE.
 - HYBRID roles — DIRECT for technical requirements follows TECHNICAL rules. DIRECT for delivery/coordination: demonstrated project ownership, cross-functional leadership with outcomes.
-- NON-TECHNICAL roles — DIRECT includes: stakeholder management, requirements translation, workflow design, project delivery, change management, adoption driving, workshop facilitation, workstream management, client relationship management — when required and evidenced.
+- NON-TECHNICAL roles — DIRECT includes ALL of the following when the job requires them and the resume shows evidence: stakeholder management, requirements translation, workflow design, project delivery, change management, adoption driving, workshop facilitation, workstream management, client relationship management, resource management, capacity planning, utilisation management, people management, conflict resolution, recruitment support, operational management, influencing senior stakeholders, process establishment, data analysis and reporting.
 
 ANTI-INFLATION: Shared terminology ("agentic", "AI", "orchestration", "automation") is NOT skill evidence. Match on what was actually done.
 
