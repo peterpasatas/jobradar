@@ -161,14 +161,29 @@ Now call submit_job_evaluations with results for all ${jobs.length} jobs.`;
       }
 
       const data = await response.json();
-
-      // Function calling response — args come back as a typed object, no parsing needed
       const part = data?.candidates?.[0]?.content?.parts?.[0];
-      if (!part?.functionCall?.args?.evaluations) {
-        return res.status(500).json({ error: `No function call in Gemini response: ${JSON.stringify(data).slice(0, 200)}` });
-      }
 
-      let scored = part.functionCall.args.evaluations;
+      let scored;
+
+      if (part?.functionCall?.args?.evaluations) {
+        // Function calling response — typed, no parsing needed
+        scored = part.functionCall.args.evaluations;
+      } else if (part?.text) {
+        // Text fallback — gemini-2.5-flash-lite doesn't always honour function calling
+        let raw = part.text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+        const s = raw.indexOf('[');
+        const e = raw.lastIndexOf(']');
+        if (s === -1 || e === -1) {
+          return res.status(500).json({ error: `No structured response from Gemini: ${raw.slice(0, 200)}` });
+        }
+        try {
+          scored = JSON.parse(raw.slice(s, e + 1));
+        } catch(err) {
+          return res.status(500).json({ error: `JSON parse failed: ${err.message}. Raw: ${raw.slice(0, 200)}` });
+        }
+      } else {
+        return res.status(500).json({ error: `Unexpected Gemini response: ${JSON.stringify(data).slice(0, 200)}` });
+      }
 
       // Enforce recommendation in code — deterministic from score, not LLM judgment
       scored = scored.map(job => {
