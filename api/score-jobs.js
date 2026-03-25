@@ -33,7 +33,7 @@ const SCORE_FUNCTION = {
             },
             summary: {
               type: 'string',
-              description: "Exactly this format: '[Role type 2-4 words]. You're strong in [2-3 specific strengths]. You're weak in [2-3 specific critical gaps].' Example: 'AI Enablement Consultant. You're strong in stakeholder management, Power Platform, workshop delivery. You're weak in Python, cloud infrastructure, RAG.'",
+              description: "Exactly this format: '[Role type 2-4 words]. You're strong in [2-3 specific strengths directly evidenced in resume and relevant to THIS role]. You're weak in [2-3 genuine gaps — things the role requires that the candidate lacks evidence for]. For NON-TECHNICAL roles: strengths and gaps must relate to operational/management skills, not technical tools unless the role explicitly requires them as core. Example for RM role: 'Resource Manager. You're strong in capacity planning, stakeholder management, utilisation reporting. You're weak in legal sector experience, international RM remit.'",
             },
             relevance_score: {
               type: 'integer',
