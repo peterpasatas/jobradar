@@ -169,15 +169,17 @@ Now call submit_job_evaluations with results for all ${jobs.length} jobs.`;
         // Function calling response — typed, no parsing needed
         scored = part.functionCall.args.evaluations;
       } else if (part?.text) {
-        // Text fallback — gemini-2.5-flash-lite doesn't always honour function calling
+        // Text fallback — parse whether Gemini returned an array or {evaluations:[...]} object
         let raw = part.text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
-        const s = raw.indexOf('[');
-        const e = raw.lastIndexOf(']');
-        if (s === -1 || e === -1) {
-          return res.status(500).json({ error: `No structured response from Gemini: ${raw.slice(0, 200)}` });
-        }
         try {
-          scored = JSON.parse(raw.slice(s, e + 1));
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            scored = parsed;
+          } else if (parsed?.evaluations) {
+            scored = parsed.evaluations;
+          } else {
+            return res.status(500).json({ error: `Unexpected response shape: ${raw.slice(0, 200)}` });
+          }
         } catch(err) {
           return res.status(500).json({ error: `JSON parse failed: ${err.message}. Raw: ${raw.slice(0, 200)}` });
         }
