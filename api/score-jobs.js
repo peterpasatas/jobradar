@@ -184,6 +184,7 @@ Call submit_job_facts with complete factual judgments for all ${jobs.length} job
         },
         body: JSON.stringify({
           model: 'deepseek-v4-flash',
+          thinking: { type: 'disabled' },
           messages: [{ role: 'user', content: prompt }],
           tools: [{ type: 'function', function: EVAL_FUNCTION }],
           tool_choice: { type: 'function', function: { name: 'submit_job_facts' } },
