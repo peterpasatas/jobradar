@@ -1,6 +1,7 @@
 // api/score-jobs.js
 // Architecture: LLM judges facts → code computes scores deterministically.
 // The model never does arithmetic. Every score is reproducible and auditable.
+// Model: deepseek-v4-flash via DeepSeek's OpenAI-compatible API.
 
 const EVAL_FUNCTION = {
   name: 'submit_job_facts',
@@ -171,21 +172,24 @@ ${postingsJson}
 
 Call submit_job_facts with complete factual judgments for all ${jobs.length} jobs. Every field matters — the scoring formulas consume each one.`;
 
+    const apiKey = process.env.DEEPSEEK_API_KEY || process.env.GEMINI_API_KEY;
+
     let attempt = 0;
     while (true) {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            tools: [{ functionDeclarations: [EVAL_FUNCTION] }],
-            toolConfig: { functionCallingConfig: { mode: 'ANY', allowedFunctionNames: ['submit_job_facts'] } },
-            generationConfig: { temperature: 0.1 },
-          }),
-        }
-      );
+      const response = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'deepseek-v4-flash',
+          messages: [{ role: 'user', content: prompt }],
+          tools: [{ type: 'function', function: EVAL_FUNCTION }],
+          tool_choice: { type: 'function', function: { name: 'submit_job_facts' } },
+          temperature: 0.1,
+        }),
+      });
 
       if (response.status === 429 && attempt < 3) {
         attempt++;
@@ -194,26 +198,34 @@ Call submit_job_facts with complete factual judgments for all ${jobs.length} job
       }
       if (!response.ok) {
         const err = await response.text();
-        return res.status(response.status).json({ error: `Gemini ${response.status}: ${err.slice(0, 300)}` });
+        return res.status(response.status).json({ error: `DeepSeek ${response.status}: ${err.slice(0, 300)}` });
       }
 
       const data = await response.json();
-      const part = data?.candidates?.[0]?.content?.parts?.[0];
+      const msg = data?.choices?.[0]?.message;
 
       let evals;
-      if (part?.functionCall?.args?.evaluations) {
-        evals = part.functionCall.args.evaluations;
-      } else if (part?.text) {
-        let raw = part.text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+      const toolArgs = msg?.tool_calls?.[0]?.function?.arguments;
+      if (toolArgs) {
+        // OpenAI-style tool call — arguments arrive as a JSON string
+        try {
+          const parsed = JSON.parse(toolArgs);
+          evals = parsed?.evaluations;
+        } catch (err) {
+          return res.status(500).json({ error: `Tool args parse failed: ${err.message}. Raw: ${String(toolArgs).slice(0, 200)}` });
+        }
+      } else if (msg?.content) {
+        // Text fallback
+        let raw = msg.content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
         try {
           const parsed = JSON.parse(raw);
           evals = Array.isArray(parsed) ? parsed : parsed?.evaluations;
-          if (!evals) return res.status(500).json({ error: `Unexpected response shape: ${raw.slice(0, 200)}` });
         } catch (err) {
           return res.status(500).json({ error: `JSON parse failed: ${err.message}. Raw: ${raw.slice(0, 200)}` });
         }
-      } else {
-        return res.status(500).json({ error: `Unexpected Gemini response: ${JSON.stringify(data).slice(0, 200)}` });
+      }
+      if (!evals) {
+        return res.status(500).json({ error: `Unexpected DeepSeek response: ${JSON.stringify(data).slice(0, 200)}` });
       }
 
       // Deterministic scoring + recommendation from judged facts
